@@ -1,101 +1,71 @@
-// CodeGuardian Background Service Worker
+// Bolt.new Assistant Background Script
 
-class CodeGuardianBackground {
+class BoltNewBackground {
   constructor() {
-    this.isProtectionActive = false;
     this.init();
   }
   
   init() {
-    this.setupEventListeners();
-    this.loadSettings();
-  }
-  
-  setupEventListeners() {
-    // Listen for messages from popup
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      this.handleMessage(message, sender, sendResponse);
-      return true; // Keep the message channel open for async responses
-    });
-    
-    // Listen for tab updates
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-      if (changeInfo.status === 'complete' && tab.url) {
-        this.onTabUpdated(tabId, tab);
-      }
-    });
+    console.log('🚀 Bolt.new Assistant: Background script loaded');
     
     // Listen for extension installation
     chrome.runtime.onInstalled.addListener((details) => {
-      this.onInstalled(details);
+      if (details.reason === 'install') {
+        console.log('✅ Bolt.new Assistant installed');
+      }
+    });
+    
+    // Listen for tab updates to inject content script
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'complete' && tab.url && tab.url.includes('bolt.new')) {
+        console.log('🎯 Bolt.new page detected, injecting content script');
+        try {
+          // Inject content script manually to ensure it loads
+          await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          });
+          console.log('✅ Content script injected successfully');
+        } catch (error) {
+          console.error('❌ Error injecting content script:', error);
+        }
+      }
+    });
+    
+    // Listen for messages from popup and content scripts
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log('📨 Background received message:', message);
+      this.handleMessage(message, sender, sendResponse);
+      return true;
     });
   }
   
-  async loadSettings() {
-    try {
-      const data = await chrome.storage.local.get(['isActive']);
-      this.isProtectionActive = data.isActive || false;
-      console.log('CodeGuardian protection status:', this.isProtectionActive);
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  }
-  
-  async handleMessage(message, sender, sendResponse) {
+  handleMessage(message, sender, sendResponse) {
     switch (message.action) {
-      case 'toggleProtection':
-        this.isProtectionActive = message.isActive;
-        console.log('Protection toggled:', this.isProtectionActive);
-        sendResponse({ success: true });
-        break;
-        
       case 'getStatus':
-        sendResponse({ isActive: this.isProtectionActive });
+        sendResponse({ isActive: true });
         break;
-        
+      case 'injectContentScript':
+        this.injectContentScript(message.tabId, sendResponse);
+        break;
       default:
-        console.warn('Unknown message action:', message.action);
-        sendResponse({ error: 'Unknown action' });
+        sendResponse({ success: false, error: 'Unknown action' });
     }
   }
   
-  onTabUpdated(tabId, tab) {
-    if (!this.isProtectionActive) return;
-    
-    // Check if the tab contains code-related content
-    if (this.isCodeSite(tab.url)) {
-      console.log('Code site detected:', tab.url);
-      // Future: Implement code protection logic here
-    }
-  }
-  
-  isCodeSite(url) {
-    const codeSites = [
-      'github.com',
-      'gitlab.com',
-      'bitbucket.org',
-      'codepen.io',
-      'jsfiddle.net',
-      'codesandbox.io',
-      'repl.it',
-      'stackblitz.com'
-    ];
-    
-    return codeSites.some(site => url.includes(site));
-  }
-  
-  onInstalled(details) {
-    if (details.reason === 'install') {
-      console.log('CodeGuardian installed successfully');
-      // Set default settings
-      chrome.storage.local.set({
-        isActive: false,
-        threatsBlocked: 0,
-        codeReviews: 0
+  async injectContentScript(tabId, sendResponse) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['content.js']
       });
+      sendResponse({ success: true });
+    } catch (error) {
+      console.error('❌ Error injecting content script:', error);
+      sendResponse({ success: false, error: error.message });
     }
   }
 }
 
-// Initialize the background service worker
-new CodeGuardianBackground();
+// Initialize background script
+new BoltNewBackground();
