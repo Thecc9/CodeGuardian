@@ -1,4 +1,4 @@
-// Bolt.new Assistant Content Script - Filter Out Binary and Noise
+// Bolt.new Assistant Content Script - Auto File Reader
 
 class BoltNewAssistant {
   constructor() {
@@ -266,12 +266,229 @@ class BoltNewAssistant {
     }
   }
   
+  // Switch to code mode if currently in preview mode
+  async switchToCodeMode() {
+    console.log('🔄 Ensuring we are in code mode...');
+    
+    try {
+      // Look for the Code/Preview toggle area based on bolt.new structure
+      // The toggle has specific class patterns with "Code" and "Preview" buttons
+      const toggleContainer = document.querySelector('[class*="flex items-center flex-wrap shrink-0 gap-1"]');
+      
+      if (toggleContainer) {
+        // Look for the Code button specifically
+        const codeButton = Array.from(toggleContainer.querySelectorAll('button')).find(btn => 
+          btn.textContent.trim() === 'Code' && !btn.getAttribute('aria-pressed')
+        );
+        
+        if (codeButton && codeButton.getAttribute('aria-pressed') === 'false') {
+          console.log('🎯 Found Code toggle button, switching...');
+          codeButton.click();
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          console.log('✅ Switched to Code mode');
+          return true;
+        }
+      }
+      
+      // Alternative: Look for any Code button with aria-pressed="false"
+      const allCodeButtons = document.querySelectorAll('button[aria-pressed="false"]');
+      for (const button of allCodeButtons) {
+        const buttonText = button.textContent?.trim();
+        if (buttonText === 'Code') {
+          console.log('🎯 Found Code button (alt method), clicking...');
+          button.click();
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          console.log('✅ Switched to Code mode');
+          return true;
+        }
+      }
+      
+      // Check if we're already in code mode
+      const activeCodeButton = document.querySelector('button[aria-pressed="true"]');
+      if (activeCodeButton && activeCodeButton.textContent.trim() === 'Code') {
+        console.log('✅ Already in Code mode');
+        return true;
+      }
+      
+      console.log('ℹ️ Code/Preview toggle not found or already in correct mode');
+      return false;
+    } catch (error) {
+      console.error('💥 Error switching to code mode:', error);
+      return false;
+    }
+  }
+  
+  // Enhanced method to get all file elements from bolt.new
+  getFileElements() {
+    console.log('🔍 Searching for file elements in the bolt.new file tree...');
+    
+    const fileElements = [];
+    const seenNames = new Set();
+    
+    // Method 1: Look for file buttons with the bolt.new structure
+    // Based on the HTML structure: button with file icon and translate="no" name
+    const fileButtons = document.querySelectorAll('button[class*="group flex items-center gap-1.5"]');
+    
+    fileButtons.forEach(button => {
+      // Look for file icon (not folder icon)
+      const hasFileIcon = button.querySelector('[class*="i-ph:file-duotone"]') || 
+                         button.querySelector('[class*="i-ph:file"]');
+      
+      // Skip if it has a folder icon instead
+      const hasFolderIcon = button.querySelector('[class*="i-ph:caret-right"]') ||
+                           button.querySelector('[class*="caret"]');
+      
+      if (hasFileIcon && !hasFolderIcon) {
+        // Get the filename from translate="no" element
+        const nameElement = button.querySelector('[translate="no"]');
+        if (nameElement) {
+          const fileName = nameElement.textContent.trim();
+          if (fileName && !seenNames.has(fileName) && this.isValidFileName(fileName)) {
+            seenNames.add(fileName);
+            fileElements.push({
+              element: button,
+              name: fileName,
+              type: 'file'
+            });
+          }
+        }
+      }
+    });
+    
+    // Method 2: Look for files in folder structures (expanded folders)
+    const allButtons = document.querySelectorAll('button[style*="padding-left"]');
+    
+    allButtons.forEach(button => {
+      const hasFileIcon = button.querySelector('[class*="i-ph:file-duotone"]');
+      const nameElement = button.querySelector('[translate="no"]');
+      
+      if (hasFileIcon && nameElement) {
+        const fileName = nameElement.textContent.trim();
+        if (fileName && !seenNames.has(fileName) && this.isValidFileName(fileName)) {
+          seenNames.add(fileName);
+          fileElements.push({
+            element: button,
+            name: fileName,
+            type: 'file'
+          });
+        }
+      }
+    });
+    
+    // Method 3: Alternative selector for different bolt.new layouts
+    const alternativeButtons = document.querySelectorAll('button[data-state="closed"]');
+    
+    alternativeButtons.forEach(button => {
+      const hasFileIcon = button.querySelector('[class*="i-ph:file"]');
+      const nameElement = button.querySelector('[translate="no"]');
+      
+      if (hasFileIcon && nameElement) {
+        const fileName = nameElement.textContent.trim();
+        if (fileName && !seenNames.has(fileName) && this.isValidFileName(fileName)) {
+          seenNames.add(fileName);
+          fileElements.push({
+            element: button,
+            name: fileName,
+            type: 'file'
+          });
+        }
+      }
+    });
+    
+    // Sort files alphabetically
+    fileElements.sort((a, b) => a.name.localeCompare(b.name));
+    
+    console.log(`📁 Found ${fileElements.length} files:`, fileElements.map(f => f.name));
+    return fileElements;
+  }
+  
+  // Check if a filename is valid
+  isValidFileName(fileName) {
+    if (!fileName || fileName.length === 0 || fileName.length > 100) return false;
+    
+    // Skip navigation elements
+    const invalidNames = ['Files', 'Search', 'caret', 'icon', '.bolt', 'node_modules'];
+    if (invalidNames.some(invalid => fileName.includes(invalid))) return false;
+    
+    // Should contain valid filename characters
+    return /^[a-zA-Z0-9._\-\/\\]+$/.test(fileName);
+  }
+  
+  // Enhanced method to get current file content from CodeMirror editor
+  getCurrentFileContent() {
+    console.log('📖 Attempting to read content from code editor...');
+    
+    // Multiple strategies to get content from different editor types
+    const strategies = [
+      // CodeMirror 6 (most common in bolt.new)
+      () => {
+        const cmContent = document.querySelector('.cm-content');
+        if (cmContent) {
+          return cmContent.textContent;
+        }
+        return null;
+      },
+      
+      // CodeMirror with specific classes
+      () => {
+        const cmEditor = document.querySelector('.cm-editor');
+        if (cmEditor) {
+          const content = cmEditor.querySelector('.cm-content');
+          return content ? content.textContent : null;
+        }
+        return null;
+      },
+      
+      // Monaco Editor
+      () => {
+        const monacoLines = document.querySelector('.view-lines');
+        if (monacoLines) {
+          return monacoLines.textContent;
+        }
+        return null;
+      },
+      
+      // Generic code editor
+      () => {
+        const codeElement = document.querySelector('pre code, code pre, .code-content');
+        if (codeElement) {
+          return codeElement.textContent;
+        }
+        return null;
+      },
+      
+      // Textarea fallback
+      () => {
+        const textarea = document.querySelector('textarea[class*="code"], textarea[class*="editor"]');
+        if (textarea) {
+          return textarea.value;
+        }
+        return null;
+      }
+    ];
+    
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        const content = strategies[i]();
+        if (content && content.trim().length > 0) {
+          console.log(`✅ Successfully got content using strategy ${i + 1}`);
+          return content.trim();
+        }
+      } catch (error) {
+        console.log(`⚠️ Strategy ${i + 1} failed:`, error.message);
+      }
+    }
+    
+    console.log('❌ No content found in any editor');
+    return null;
+  }
+  
   // Enhanced function to check if content should be excluded
   shouldExcludeContent(text) {
     const trimmedText = text.trim();
     
     // Skip very short content
-    if (trimmedText.length < 20) return true;
+    if (trimmedText.length < 10) return true;
     
     // Skip shell commands
     const commandPatterns = [
@@ -324,7 +541,7 @@ class BoltNewAssistant {
     return false;
   }
   
-  // Function to check if content is actual code
+  // Function to check if content is actual code or meaningful text
   isActualCode(text) {
     const trimmedText = text.trim();
     
@@ -373,149 +590,215 @@ class BoltNewAssistant {
       /for\s*\(/,
       /while\s*\(/,
       /try\s*\{/,
-      /catch\s*\(/
+      /catch\s*\(/,
+      
+      // Markdown
+      /^#\s+/m,
+      /^\*\s+/m,
+      /^\d+\.\s+/m,
+      /\[.*\]\(.*\)/,
+      
+      // Config files
+      /^\w+\s*=\s*.+$/m,
+      /^\[.*\]$/m
     ];
     
     return codePatterns.some(pattern => pattern.test(trimmedText));
   }
   
+  // Enhanced file reading with better error handling and progress tracking
   async readProjectCode(sendResponse) {
-    console.log('📁 Reading project code (filtering out noise)...');
+    console.log('📁 Starting comprehensive file reading...');
     
     try {
-      let codeContent = '';
-      let filesFound = 0;
-      const capturedContent = new Set();
+      // Ensure we're in code mode
+      await this.switchToCodeMode();
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 1. EXACT ORDER: Use the exact order specified
-      const exactOrder = [
-        '.bolt',
-        '.gitignore',
-        'background.js',
-        'content.js',
-        'manifest.json',
-        'package-loc...',
-        'package.json',
-        'popup.css',
-        'popup.html',
-        'popup.js',
-        'README.md',
-        'settings.html'
-      ];
+      const fileElements = this.getFileElements();
       
-      console.log('📋 Using exact specified order:', exactOrder);
-      
-      // Create the file list in exact order
-      const fileListContent = exactOrder.join('\n');
-      codeContent += `=== PROJECT FILES (In Exact Order) ===\n${fileListContent}\n`;
-      console.log('✅ Added file list in exact specified order');
-      
-      // 2. Get code content with enhanced filtering
-      console.log('🔍 Looking for actual code content...');
-      
-      const addUniqueContent = (content, label) => {
-        const trimmedContent = content.trim();
-        
-        // Enhanced filtering
-        if (this.shouldExcludeContent(trimmedContent)) {
-          console.log(`⚠️ Skipping excluded content: ${label}`);
-          return false;
-        }
-        
-        // Check if it's actual code
-        if (!this.isActualCode(trimmedContent)) {
-          console.log(`⚠️ Skipping non-code content: ${label}`);
-          return false;
-        }
-        
-        const signature = trimmedContent.substring(0, 100);
-        if (capturedContent.has(signature)) {
-          console.log(`⚠️ Skipping duplicate content: ${label}`);
-          return false;
-        }
-        
-        capturedContent.add(signature);
-        filesFound++;
-        codeContent += `\n=== ${label} ===\n${trimmedContent}\n`;
-        console.log(`✅ Added code content: ${label}`);
-        return true;
-      };
-      
-      // Look for code in various places
-      const codeSelectors = [
-        { selector: '.monaco-editor .view-lines', name: 'Monaco Editor' },
-        { selector: '.monaco-editor', name: 'Monaco Editor' },
-        { selector: '.CodeMirror-code', name: 'CodeMirror' },
-        { selector: '.cm-content', name: 'CodeMirror' },
-        { selector: 'pre code', name: 'Code Block' },
-        { selector: 'code[class*="language-"]', name: 'Syntax Highlighted' },
-        { selector: '.hljs', name: 'Highlighted Code' }
-      ];
-      
-      for (const { selector, name } of codeSelectors) {
-        const elements = document.querySelectorAll(selector);
-        console.log(`🔍 Found ${elements.length} ${name} elements`);
-        
-        elements.forEach((element, index) => {
-          const text = element.textContent.trim();
-          if (text.length > 20) {
-            // Try to determine language
-            const classList = element.className.toLowerCase();
-            let language = '';
-            
-            if (classList.includes('javascript') || classList.includes('js')) language = 'JavaScript';
-            else if (classList.includes('html')) language = 'HTML';
-            else if (classList.includes('css')) language = 'CSS';
-            else if (classList.includes('json')) language = 'JSON';
-            else if (text.includes('<!DOCTYPE') || text.includes('<html')) language = 'HTML';
-            else if (text.includes('function') || text.includes('const ')) language = 'JavaScript';
-            else if (text.includes('"name":') && text.includes('"version":')) language = 'JSON';
-            else if (text.includes('background:') || text.includes('color:')) language = 'CSS';
-            
-            const label = language ? `${language} CODE` : `${name.toUpperCase()}`;
-            addUniqueContent(text, label);
-          }
-        });
-      }
-      
-      console.log(`🔍 Total code sections found: ${filesFound}`);
-      
-      if (codeContent.trim()) {
-        const maxLength = 8000;
-        if (codeContent.length > maxLength) {
-          codeContent = codeContent.substring(0, maxLength) + '\n\n...(truncated - showing first 8,000 characters)\n\nTotal sections: ' + filesFound;
-        }
-        
-        console.log('✅ Successfully found clean code content');
-        sendResponse({ 
-          success: true, 
-          code: codeContent,
-          filesFound: filesFound
-  });
-} else {
-        console.log('❌ No actual code content found');
-        
-        const debugInfo = `
-Debug Info:
-- File list: Created in exact specified order
-- Monaco editors: ${document.querySelectorAll('.monaco-editor').length}
-- Code blocks: ${document.querySelectorAll('pre code').length}
-- Highlighted code: ${document.querySelectorAll('.hljs').length}
-
-Files in exact order:
-${exactOrder.join('\n')}
-
-Make sure you have actual code files open in the Bolt editor.
-        `;
-        
+      if (fileElements.length === 0) {
         sendResponse({ 
           success: false, 
-          error: 'No actual code content found.\n\n' + debugInfo
+          error: 'No files found. Please ensure you have a project open in bolt.new and the file tree is visible.' 
+        });
+        return;
+      }
+      
+      console.log(`📋 Found ${fileElements.length} files to read`);
+      
+      const fileContents = new Map();
+      const errors = [];
+      let successCount = 0;
+      
+      // Create progress indicator
+      this.showProgress('Starting file read...', 0, fileElements.length);
+      
+      // Read each file
+      for (let i = 0; i < fileElements.length; i++) {
+        const fileInfo = fileElements[i];
+        const fileName = fileInfo.name;
+        
+        this.updateProgress(`Reading: ${fileName}`, i + 1, fileElements.length);
+        
+        try {
+          // Click on the file to open it
+          if (fileInfo.element && typeof fileInfo.element.click === 'function') {
+            fileInfo.element.click();
+            console.log(`🖱️ Clicked file: ${fileName}`);
+            
+            // Wait for content to load
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            
+            // Try to get content
+            const content = this.getCurrentFileContent();
+            
+            if (content && content.length > 0) {
+              // Filter out non-useful content
+              if (!this.shouldExcludeContent(content)) {
+                fileContents.set(fileName, content);
+                successCount++;
+                console.log(`✅ Read ${fileName} (${content.length} chars)`);
+              } else {
+                console.log(`⚠️ Excluded ${fileName} (filtered content)`);
+              }
+            } else {
+              console.log(`❌ No content for ${fileName}`);
+              errors.push(`No content found for ${fileName}`);
+            }
+          } else {
+            console.log(`❌ Cannot click ${fileName}`);
+            errors.push(`Cannot access ${fileName}`);
+          }
+        } catch (error) {
+          console.error(`💥 Error reading ${fileName}:`, error);
+          errors.push(`Error reading ${fileName}: ${error.message}`);
+        }
+        
+        // Small delay between files
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      this.hideProgress();
+      
+      // Compile results
+      if (fileContents.size > 0) {
+        let result = `=== PROJECT CODE (${fileContents.size} files) ===\n\n`;
+        
+        // Add file list
+        result += '📁 FILES:\n';
+        for (const fileName of fileContents.keys()) {
+          result += `  - ${fileName}\n`;
+        }
+        result += '\n';
+        
+        // Add file contents
+        for (const [fileName, content] of fileContents) {
+          result += `\n${'='.repeat(50)}\n`;
+          result += `📄 FILE: ${fileName}\n`;
+          result += `${'='.repeat(50)}\n`;
+          result += content;
+          result += '\n';
+        }
+        
+        // Add summary
+        result += `\n${'='.repeat(50)}\n`;
+        result += `📊 SUMMARY:\n`;
+        result += `✅ Successfully read: ${successCount} files\n`;
+        result += `❌ Errors: ${errors.length} files\n`;
+        result += `📊 Total characters: ${result.length}\n`;
+        
+        if (errors.length > 0) {
+          result += `\n⚠️ ERRORS:\n${errors.join('\n')}\n`;
+        }
+        
+        // Truncate if too long
+        const maxLength = 15000;
+        if (result.length > maxLength) {
+          result = result.substring(0, maxLength) + `\n\n...(truncated - showing first ${maxLength} characters)\n\nTotal files: ${fileContents.size}`;
+        }
+        
+        sendResponse({
+          success: true,
+          code: result,
+          filesFound: fileContents.size,
+          totalFiles: fileElements.length
+        });
+      } else {
+        sendResponse({
+          success: false,
+          error: `Failed to read any files.\n\nErrors encountered:\n${errors.join('\n')}\n\nTotal files attempted: ${fileElements.length}`
         });
       }
+      
     } catch (error) {
-      console.error('💥 Error reading code:', error);
-      sendResponse({ success: false, error: error.message });
+      console.error('💥 Critical error in readProjectCode:', error);
+      this.hideProgress();
+      sendResponse({ 
+        success: false, 
+        error: `Critical error: ${error.message}` 
+      });
+    }
+  }
+  
+  // Progress indicator methods
+  showProgress(message, current, total) {
+    const existing = document.getElementById('bolt-assistant-progress');
+    if (existing) existing.remove();
+    
+    const progress = document.createElement('div');
+    progress.id = 'bolt-assistant-progress';
+    progress.innerHTML = `
+      <div style="
+        position: fixed;
+        top: 60px;
+        left: 10px;
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        z-index: 10001;
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+        max-width: 350px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
+      ">
+        <div style="font-weight: 600; margin-bottom: 4px;">📁 Bolt.new File Reader</div>
+        <div id="progress-message">${message}</div>
+        <div style="margin-top: 8px;">
+          <div style="background: rgba(255,255,255,0.2); height: 4px; border-radius: 2px; overflow: hidden;">
+            <div id="progress-bar" style="background: #fff; height: 100%; transition: width 0.3s ease; width: ${total > 0 ? (current / total * 100) : 0}%;"></div>
+          </div>
+          <div style="font-size: 11px; margin-top: 4px; opacity: 0.9;">${current}/${total} files</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(progress);
+  }
+  
+  updateProgress(message, current, total) {
+    const messageEl = document.getElementById('progress-message');
+    const barEl = document.getElementById('progress-bar');
+    
+    if (messageEl) messageEl.textContent = message;
+    if (barEl) barEl.style.width = `${total > 0 ? (current / total * 100) : 0}%`;
+    
+    const progress = document.getElementById('bolt-assistant-progress');
+    if (progress) {
+      const countsEl = progress.querySelector('div:last-child > div:last-child');
+      if (countsEl) countsEl.textContent = `${current}/${total} files`;
+    }
+  }
+  
+  hideProgress() {
+    const progress = document.getElementById('bolt-assistant-progress');
+    if (progress) {
+      setTimeout(() => {
+        if (progress.parentNode) {
+          progress.parentNode.removeChild(progress);
+        }
+      }, 2000);
     }
   }
 }
