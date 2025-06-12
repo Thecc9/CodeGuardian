@@ -1,0 +1,13 @@
+{
+  "name": "codeguardian",
+  "version": "1.0.0",
+  "description": "A Chrome extension for code protection and security",
+  "scripts": {
+    "dev": "echo 'Chrome extension ready for development. Load unpacked extension in chrome://extensions/'",
+    "build": "echo 'No build step required for Chrome extension'",
+    "start": "echo 'Chrome extension ready. Load unpacked extension in chrome://extensions/'"
+  },
+  "keywords": ["chrome-extension", "security", "code-protection"],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeGuardian Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .setting-group {
+      margin-bottom: 30px;
+    }
+    
+    .setting-group h3 {
+      color: #495057;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+    
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .setting-item:last-child {
+      border-bottom: none;
+    }
+    
+    .setting-info h4 {
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .setting-info p {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .toggle-switch.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(26px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ CodeGuardian</h1>
+      <p>Configure your code protection settings</p>
+    </div>
+    
+    <div class="card">
+      <div class="setting-group">
+        <h3>Protection Settings</h3>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Enable Code Protection</h4>
+            <p>Protect sensitive code from unauthorized access</p>
+          </div>
+          <div class="toggle-switch" id="protectionToggle"></div>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Block Right-Click on Code</h4>
+            <p>Prevent context menu access on code elements</p>
+          </div>
+          <div class="toggle-switch" id="rightClickToggle"></div>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Protect Sensitive Patterns</h4>
+            <p>Block selection of API keys, passwords, and tokens</p>
+          </div>
+          <div class="toggle-switch" id="sensitiveToggle"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="setting-group">
+        <h3>Monitoring</h3>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Monitor Code Sites</h4>
+            <p>Actively monitor GitHub, GitLab, and other code platforms</p>
+          </div>
+          <div class="toggle-switch active" id="monitoringToggle"></div>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <h4>Show Protection Notifications</h4>
+            <p>Display notifications when protection is active</p>
+          </div>
+          <div class="toggle-switch active" id="notificationsToggle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Simple settings management
+    document.querySelectorAll('.toggle-switch').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+        // Save settings to storage
+        const settingId = toggle.id;
+        const isActive = toggle.classList.contains('active');
+        chrome.storage.local.set({ [settingId]: isActive });
+      });
+    });
+    
+    // Load saved settings
+    chrome.storage.local.get(null, (settings) => {
+      Object.keys(settings).forEach(key => {
+        const toggle = document.getElementById(key);
+        if (toggle && settings[key]) {
+          toggle.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
