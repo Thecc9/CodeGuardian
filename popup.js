@@ -393,7 +393,8 @@ class CodeGuardianAssistant {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': this.apiKeys.claude,
-          'anthropic-version': '2023-06-01'
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
@@ -444,7 +445,8 @@ class CodeGuardianAssistant {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKeys.openai}`
+          'Authorization': `Bearer ${this.apiKeys.openai}`,
+          'User-Agent': 'CodeGuardian-Extension/1.0'
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
@@ -452,7 +454,8 @@ class CodeGuardianAssistant {
             role: 'user',
             content: prompt
           }],
-          max_tokens: 2000
+          max_tokens: 2000,
+          temperature: 0.3
         })
       });
 
@@ -495,7 +498,8 @@ class CodeGuardianAssistant {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKeys.deepseek}`
+          'Authorization': `Bearer ${this.apiKeys.deepseek}`,
+          'User-Agent': 'CodeGuardian-Extension/1.0'
         },
         body: JSON.stringify({
           model: 'deepseek-chat',
@@ -503,7 +507,8 @@ class CodeGuardianAssistant {
             role: 'user',
             content: prompt
           }],
-          max_tokens: 2000
+          max_tokens: 2000,
+          temperature: 0.3
         })
       });
 
