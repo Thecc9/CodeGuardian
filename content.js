@@ -98,83 +98,266 @@ class BoltNewAssistant {
   }
   
   async readLatestPlan(sendResponse) {
-    console.log('📋 Attempting to read latest plan...');
+    console.log('📋 Attempting to read latest AI message...');
     
     try {
-      // Look for chat messages in bolt.new
-      const messageSelectors = [
-        '[class*="message"]',
+      let latestAIMessage = '';
+      
+      // Strategy 1: Look for chronologically ordered messages in chat containers
+      const chatContainerSelectors = [
         '[class*="chat"]',
-        '[class*="response"]',
-        '[class*="assistant"]',
-        '[class*="ai"]',
-        'div[class*="bolt"]',
-        '.prose',
-        '[role="assistant"]'
+        '[class*="conversation"]', 
+        '[class*="messages"]',
+        '[class*="thread"]',
+        'main',
+        '[class*="overflow-y-auto"]',
+        '[class*="scroll"]'
       ];
       
-      let planText = '';
-      let foundMessages = [];
+      let foundLastMessage = false;
       
-      // Try each selector to find messages
-      for (const selector of messageSelectors) {
-        const elements = document.querySelectorAll(selector);
-        console.log(`🔍 Found ${elements.length} elements for selector: ${selector}`);
+      for (const containerSelector of chatContainerSelectors) {
+        const container = document.querySelector(containerSelector);
+        if (!container) continue;
         
-        elements.forEach(element => {
+        console.log(`🔍 Checking container: ${containerSelector}`);
+        
+        // Look for message elements within the container (in DOM order = chronological order)
+        const messageElements = Array.from(container.querySelectorAll('div, article, section'))
+          .filter(el => {
+            const text = el.textContent?.trim();
+            return text && text.length > 30 && text.length < 8000;
+          });
+        
+        const aiMessages = [];
+        
+        // Identify AI messages (exclude user messages and UI elements) 
+        messageElements.forEach((element, index) => {
           const text = element.textContent.trim();
-          if (text.length > 50 && text.length < 3000) {
-            foundMessages.push({
-              selector: selector,
+          
+          // Skip if it looks like user input or UI elements
+          if (this.isUserMessage(element, text)) return;
+          if (this.isUIElement(element, text)) return;
+          
+          // Check if this looks like an AI response
+          if (this.isAIMessage(element, text)) {
+            aiMessages.push({
+              element: element,
               text: text,
-              length: text.length
+              domPosition: index,
+              confidence: this.getAIConfidence(element, text)
             });
           }
         });
-      }
-      
-      // Sort by length (longer messages are likely more substantial)
-      foundMessages.sort((a, b) => b.length - a.length);
-      
-      // Get the most substantial message (likely the latest plan)
-      if (foundMessages.length > 0) {
-        planText = foundMessages[0].text;
-        console.log('✅ Found plan content from:', foundMessages[0].selector);
-      } else {
-        // Fallback: get any substantial text content
-        const allDivs = document.querySelectorAll('div, p, article, section');
-        for (const div of allDivs) {
-          const text = div.textContent.trim();
-          if (text.length > 100 && text.length < 2000 && 
-              (text.includes('plan') || text.includes('step') || text.includes('create') || text.includes('build'))) {
-            planText = text;
-            break;
-          }
+        
+        if (aiMessages.length > 0) {
+          // Sort by DOM position (later in DOM = more recent), then by confidence
+          aiMessages.sort((a, b) => {
+            const positionDiff = b.domPosition - a.domPosition;
+            if (Math.abs(positionDiff) > 2) return positionDiff;
+            return b.confidence - a.confidence;
+          });
+          
+          latestAIMessage = aiMessages[0].text;
+          console.log(`✅ Found latest AI message (confidence: ${aiMessages[0].confidence.toFixed(2)})`);
+          foundLastMessage = true;
+          break;
         }
       }
       
-      if (planText) {
-        // Limit length for display
-        if (planText.length > 1500) {
-          planText = planText.substring(0, 1500) + '...\n\n(truncated for display)';
+      // Strategy 2: Fallback - look for AI-specific elements in reverse DOM order
+      if (!foundLastMessage) {
+        console.log('🔄 Trying fallback strategy...');
+        
+        const aiSelectors = [
+          '[role="assistant"]',
+          '[class*="assistant"]',
+          '[class*="ai-"]',
+          '[class*="bot-"]', 
+          '[data-role="assistant"]',
+          '.prose:not([class*="user"])',
+          '[class*="markdown"]:not([class*="user"])'
+        ];
+        
+        const aiElements = [];
+        
+        for (const selector of aiSelectors) {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            const text = element.textContent?.trim();
+            if (text && text.length > 50 && text.length < 8000) {
+              aiElements.push({
+                element: element,
+                text: text,
+                selector: selector,
+                position: this.getElementPosition(element)
+              });
+            }
+          });
         }
         
-        console.log('✅ Successfully found plan content');
+        if (aiElements.length > 0) {
+          // Sort by DOM position (higher = more recent)
+          aiElements.sort((a, b) => b.position - a.position);
+          latestAIMessage = aiElements[0].text;
+          console.log(`✅ Found AI message via fallback: ${aiElements[0].selector}`);
+          foundLastMessage = true;
+        }
+      }
+      
+      if (latestAIMessage) {
+        // Clean up the message
+        latestAIMessage = this.cleanMessageText(latestAIMessage);
+        
+        // Limit length for display
+        if (latestAIMessage.length > 2500) {
+          latestAIMessage = latestAIMessage.substring(0, 2500) + '...\n\n(truncated for display)';
+        }
+        
+        console.log('✅ Successfully found latest AI message');
         sendResponse({ 
           success: true, 
-          plan: planText
+          plan: latestAIMessage
         });
       } else {
-        console.log('❌ No plan content found');
+        console.log('❌ No AI message found');
         sendResponse({ 
           success: false, 
-          error: 'No conversation or plan found. Try having a conversation with Bolt first.' 
+          error: 'No AI response found. Try having a conversation with Bolt first, or ensure the AI has responded recently.' 
         });
       }
     } catch (error) {
-      console.error('💥 Error reading plan:', error);
+      console.error('💥 Error reading latest message:', error);
       sendResponse({ success: false, error: error.message });
     }
+  }
+
+  // Helper methods for AI message detection
+  isUserMessage(element, text) {
+    // Check for indicators that this is a user message
+    const userIndicators = ['user', 'human', 'you said', 'your message', 'input', 'prompt'];
+    const elementClasses = element.className?.toLowerCase() || '';
+    const parentClasses = element.parentElement?.className?.toLowerCase() || '';
+    
+    // Check classes for user indicators
+    for (const indicator of userIndicators) {
+      if (elementClasses.includes(indicator) || parentClasses.includes(indicator)) {
+        return true;
+      }
+    }
+    
+    // Check for typical user message patterns (short questions)
+    if (text.length < 150 && (text.includes('?') || text.startsWith('Can you') || text.startsWith('Please') || text.startsWith('How'))) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  isUIElement(element, text) {
+    // Check for UI chrome, navigation, buttons, etc.
+    const uiIndicators = ['button', 'menu', 'nav', 'header', 'footer', 'sidebar', 'toolbar', 'tab', 'panel'];
+    const elementTag = element.tagName?.toLowerCase();
+    const elementClasses = element.className?.toLowerCase() || '';
+    
+    // Skip actual button/input elements
+    if (['button', 'input', 'textarea', 'select'].includes(elementTag)) {
+      return true;
+    }
+    
+    // Skip elements with UI-related classes
+    for (const indicator of uiIndicators) {
+      if (elementClasses.includes(indicator)) {
+        return true;
+      }
+    }
+    
+    // Skip very short text that looks like UI labels
+    if (text.length < 30 && /^[A-Z][a-z\s]+$/.test(text)) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  isAIMessage(element, text) {
+    // Check for indicators that this is an AI response
+    const aiIndicators = ['assistant', 'ai', 'bot', 'response', 'answer'];
+    const elementClasses = element.className?.toLowerCase() || '';
+    const parentClasses = element.parentElement?.className?.toLowerCase() || '';
+    
+    // Check classes for AI indicators
+    for (const indicator of aiIndicators) {
+      if (elementClasses.includes(indicator) || parentClasses.includes(indicator)) {
+        return true;
+      }
+    }
+    
+    // Check for typical AI response patterns
+    if (text.length > 100) {
+      // Long, structured text is likely AI
+      if (text.includes('\n') || text.includes('•') || text.includes('1.') || text.includes('-')) {
+        return true;
+      }
+      
+      // Technical explanations are likely AI
+      if (text.includes('```') || text.includes('function') || text.includes('import') || text.includes('class')) {
+        return true;
+      }
+      
+      // AI-like language patterns
+      if (text.includes('I ') || text.includes('I\'ll ') || text.includes('Let me ') || text.includes('Here\'s ')) {
+        return true;
+      }
+    }
+    
+    return text.length > 80; // Basic fallback - longer text might be AI
+  }
+  
+  getAIConfidence(element, text) {
+    let confidence = 0;
+    
+    const elementClasses = element.className?.toLowerCase() || '';
+    const parentClasses = element.parentElement?.className?.toLowerCase() || '';
+    
+    // Class-based confidence
+    if (elementClasses.includes('assistant') || parentClasses.includes('assistant')) confidence += 0.8;
+    if (elementClasses.includes('ai') || parentClasses.includes('ai')) confidence += 0.7;
+    if (elementClasses.includes('response') || parentClasses.includes('response')) confidence += 0.6;
+    if (elementClasses.includes('prose') || parentClasses.includes('prose')) confidence += 0.4;
+    
+    // Content-based confidence
+    if (text.includes('```')) confidence += 0.3;
+    if (text.includes('I ') || text.includes('I\'ll ') || text.includes('Let me ')) confidence += 0.3;
+    if (text.length > 300) confidence += 0.2;
+    if (text.includes('\n\n')) confidence += 0.1;
+    if (text.includes('Here\'s') || text.includes('You can')) confidence += 0.2;
+    
+    return Math.min(confidence, 1.0);
+  }
+  
+  getElementPosition(element) {
+    // Get approximate DOM position for sorting (higher = more recent)
+    let position = 0;
+    let current = element;
+    
+    while (current) {
+      const siblings = Array.from(current.parentNode?.children || []);
+      position += siblings.indexOf(current) * 1000;
+      current = current.parentNode;
+      if (current === document.body) break;
+    }
+    
+    return position;
+  }
+  
+  cleanMessageText(text) {
+    // Clean up the message text
+    return text
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/^\s*[\w\s]*:\s*/, '') // Remove potential prefixes like "Assistant: "
+      .replace(/^(Bolt|AI|Assistant)[:\s]+/i, '') // Remove AI name prefixes  
+      .trim();
   }
   
   async sendChatMessage(message, sendResponse) {
