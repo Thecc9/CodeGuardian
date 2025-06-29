@@ -98,20 +98,20 @@ class BoltNewAssistant {
   }
   
   async readLatestPlan(sendResponse) {
-    console.log('📋 Attempting to read latest AI plan message...');
+    console.log('📋 Attempting to read last AI message...');
     
     try {
-      let latestAIMessage = '';
+      let lastAIMessage = '';
       
-      // Strategy 1: Look for chronologically ordered messages in chat containers
+      // Find the main chat container
       const chatContainerSelectors = [
         '[class*="chat"]',
         '[class*="conversation"]', 
         '[class*="messages"]',
         '[class*="thread"]',
         'main',
-        '[class*="overflow-y-auto"]',
-        '[class*="scroll"]'
+        '[data-message-id]', // Look for elements with message IDs
+        '[class*="overflow-y-auto"]'
       ];
       
       let foundLastMessage = false;
@@ -122,158 +122,137 @@ class BoltNewAssistant {
         
         console.log(`🔍 Checking container: ${containerSelector}`);
         
-        // Look for message elements within the container (in DOM order = chronological order)
-        const messageElements = Array.from(container.querySelectorAll('div, article, section'))
+        // Get ALL potential message elements in DOM order (chronological)
+        const allElements = Array.from(container.querySelectorAll('div[data-message-id], div, article, section'))
           .filter(el => {
             const text = el.textContent?.trim();
-            return text && text.length > 30 && text.length < 8000;
+            return text && text.length > 50 && text.length < 10000;
           });
+        
+        console.log(`📝 Found ${allElements.length} potential message elements`);
         
         const aiMessages = [];
         
-        // Identify AI messages (exclude user messages and UI elements) 
-        messageElements.forEach((element, index) => {
+        // Filter to find only AI messages, keeping their chronological order
+        allElements.forEach((element, index) => {
           const text = element.textContent.trim();
           
-          // Skip if it looks like user input or UI elements
-          if (this.isUserMessage(element, text)) return;
-          if (this.isUIElement(element, text)) return;
+          // Skip user messages
+          if (this.isUserMessage(element, text)) {
+            console.log(`⚠️ Skipping user message at index ${index}`);
+            return;
+          }
           
-          // Check if this looks like an AI response
+          // Skip UI elements
+          if (this.isUIElement(element, text)) {
+            console.log(`⚠️ Skipping UI element at index ${index}`);
+            return;
+          }
+          
+          // Check if this is an AI message
           if (this.isAIMessage(element, text)) {
-            const isPlan = this.isPlanMessage(element, text);
-            const confidence = isPlan ? this.getPlanConfidence(element, text) : this.getAIConfidence(element, text);
-            
+            console.log(`✅ Found AI message at index ${index} (${text.substring(0, 100)}...)`);
             aiMessages.push({
               element: element,
               text: text,
               domPosition: index,
-              confidence: confidence,
-              isPlan: isPlan
+              timestamp: Date.now() + index // Use index as relative timestamp
             });
           }
         });
         
         if (aiMessages.length > 0) {
-          // Separate plan messages from regular AI messages
-          const planMessages = aiMessages.filter(msg => msg.isPlan);
-          const regularMessages = aiMessages.filter(msg => !msg.isPlan);
+          // Sort by DOM position to get chronological order (highest index = most recent)
+          aiMessages.sort((a, b) => b.domPosition - a.domPosition);
           
-          let selectedMessage;
+          // Get the LAST (most recent) AI message
+          const lastMessage = aiMessages[0];
+          lastAIMessage = lastMessage.text;
           
-          if (planMessages.length > 0) {
-            // Prioritize plan messages - sort by recency then confidence
-            planMessages.sort((a, b) => {
-              const positionDiff = b.domPosition - a.domPosition;
-              if (Math.abs(positionDiff) > 2) return positionDiff;
-              return b.confidence - a.confidence;
-            });
-            selectedMessage = planMessages[0];
-            console.log(`✅ Found plan message (confidence: ${selectedMessage.confidence.toFixed(2)})`);
-          } else {
-            // Fall back to regular AI messages
-            regularMessages.sort((a, b) => {
-              const positionDiff = b.domPosition - a.domPosition;
-              if (Math.abs(positionDiff) > 2) return positionDiff;
-              return b.confidence - a.confidence;
-            });
-            selectedMessage = regularMessages[0];
-            console.log(`✅ Found AI message (confidence: ${selectedMessage.confidence.toFixed(2)})`);
-          }
+          // Check if it contains a plan (for logging purposes)
+          const isPlan = this.isPlanMessage(lastMessage.element, lastMessage.text);
           
-          latestAIMessage = selectedMessage.text;
+          console.log(`✅ Selected LAST AI message at position ${lastMessage.domPosition}`);
+          console.log(`📋 Contains plan: ${isPlan ? 'Yes' : 'No'}`);
+          
           foundLastMessage = true;
           break;
         }
       }
       
-      // Strategy 2: Fallback - look for AI-specific elements in reverse DOM order
+      // Fallback strategy: Look for AI elements by specific selectors
       if (!foundLastMessage) {
-        console.log('🔄 Trying fallback strategy...');
+        console.log('🔄 Trying fallback strategy with AI selectors...');
         
         const aiSelectors = [
           '[role="assistant"]',
           '[class*="assistant"]',
-          '[class*="ai-"]',
-          '[class*="bot-"]', 
           '[data-role="assistant"]',
           '.prose:not([class*="user"])',
-          '[class*="markdown"]:not([class*="user"])'
+          '[class*="ai-"]:not([class*="user"])',
+          '[class*="bot-"]:not([class*="user"])'
         ];
         
         const aiElements = [];
         
         for (const selector of aiSelectors) {
           const elements = document.querySelectorAll(selector);
+          console.log(`🔍 Found ${elements.length} elements for selector: ${selector}`);
+          
           elements.forEach(element => {
             const text = element.textContent?.trim();
-            if (text && text.length > 50 && text.length < 8000) {
-              const isPlan = this.isPlanMessage(element, text);
-              const confidence = isPlan ? this.getPlanConfidence(element, text) : this.getAIConfidence(element, text);
+            if (text && text.length > 50 && text.length < 10000 && 
+                !this.isUserMessage(element, text) && 
+                !this.isUIElement(element, text)) {
               
               aiElements.push({
                 element: element,
                 text: text,
                 selector: selector,
-                position: this.getElementPosition(element),
-                isPlan: isPlan,
-                confidence: confidence
+                position: this.getElementPosition(element)
               });
             }
           });
         }
         
         if (aiElements.length > 0) {
-          // Separate plan messages from regular AI messages
-          const planElements = aiElements.filter(el => el.isPlan);
-          const regularElements = aiElements.filter(el => !el.isPlan);
+          // Sort by DOM position (higher = more recent)
+          aiElements.sort((a, b) => b.position - a.position);
           
-          let selectedElement;
+          const lastElement = aiElements[0];
+          lastAIMessage = lastElement.text;
           
-          if (planElements.length > 0) {
-            // Prioritize plan messages - sort by position then confidence
-            planElements.sort((a, b) => {
-              const positionDiff = b.position - a.position;
-              if (Math.abs(positionDiff) > 1000) return positionDiff;
-              return b.confidence - a.confidence;
-            });
-            selectedElement = planElements[0];
-            console.log(`✅ Found plan message via fallback: ${selectedElement.selector} (confidence: ${selectedElement.confidence.toFixed(2)})`);
-          } else {
-            // Fall back to regular AI messages
-            regularElements.sort((a, b) => b.position - a.position);
-            selectedElement = regularElements[0];
-            console.log(`✅ Found AI message via fallback: ${selectedElement.selector}`);
-          }
+          const isPlan = this.isPlanMessage(lastElement.element, lastElement.text);
+          console.log(`✅ Found LAST AI message via fallback: ${lastElement.selector}`);
+          console.log(`📋 Contains plan: ${isPlan ? 'Yes' : 'No'}`);
           
-          latestAIMessage = selectedElement.text;
           foundLastMessage = true;
         }
       }
       
-      if (latestAIMessage) {
+      if (lastAIMessage) {
         // Clean up the message
-        latestAIMessage = this.cleanMessageText(latestAIMessage);
+        lastAIMessage = this.cleanMessageText(lastAIMessage);
         
         // Limit length for display
-        if (latestAIMessage.length > 2500) {
-          latestAIMessage = latestAIMessage.substring(0, 2500) + '...\n\n(truncated for display)';
+        if (lastAIMessage.length > 3000) {
+          lastAIMessage = lastAIMessage.substring(0, 3000) + '...\n\n(truncated for display)';
         }
         
-        console.log('✅ Successfully found latest AI plan/message');
+        console.log('✅ Successfully found last AI message');
         sendResponse({ 
           success: true, 
-          plan: latestAIMessage
+          plan: lastAIMessage
         });
       } else {
-        console.log('❌ No AI plan/message found');
+        console.log('❌ No AI messages found');
         sendResponse({ 
           success: false, 
-          error: 'No AI plan or response found. Try asking Bolt to create a plan or provide structured guidance.' 
+          error: 'No AI messages found in the conversation. Make sure Bolt has responded to your query.' 
         });
       }
     } catch (error) {
-      console.error('💥 Error reading latest message:', error);
+      console.error('💥 Error reading last AI message:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
