@@ -1,55 +1,220 @@
-# Privacybeleid voor CodeGuardian - AI-Powered Security Assistant
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacybeleid - CodeGuardian</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+        }
+        h2 {
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #6c757d;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .contact-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .last-updated {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Privacybeleid voor CodeGuardian</h1>
+        <p class="last-updated">Laatst bijgewerkt: 28 december 2024</p>
 
-Laatst bijgewerkt: 28 juni 2025
+        <p>Dit privacybeleid beschrijft hoe de CodeGuardian Chrome-extensie ("de Extensie") omgaat met informatie. CodeGuardian is ontworpen om gebruikers te helpen bij het analyseren van implementatieplannen voor beveiligingskwetsbaarheden met behulp van AI-modellen.</p>
 
-Dit privacybeleid beschrijft hoe de CodeGuardian Chrome-extensie ("de Extensie") omgaat met informatie. CodeGuardian is ontworpen om gebruikers te helpen bij het analyseren van implementatieplannen voor beveiligingskwetsbaarheden met behulp van AI-modellen.
+        <h2>1. Informatie die wij verzamelen</h2>
 
-## 1. Informatie die wij verzamelen
+        <p>De CodeGuardian-extensie verzamelt <strong>geen persoonlijke identificeerbare informatie</strong> van gebruikers. Wij verzamelen geen browsegeschiedenis, persoonlijke gegevens, of enige andere informatie die direct aan u kan worden gekoppeld.</p>
 
-De CodeGuardian-extensie verzamelt **geen persoonlijke identificeerbare informatie** van gebruikers. Wij verzamelen geen browsegeschiedenis, persoonlijke gegevens, of enige andere informatie die direct aan u kan worden gekoppeld.
+        <p>De enige informatie die de extensie verwerkt, is:</p>
 
-De enige informatie die de extensie verwerkt, is:
+        <ul>
+            <li><strong>API-sleutels:</strong> U verstrekt API-sleutels voor de door u gekozen AI-modellen (Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek). Deze sleutels zijn noodzakelijk voor de functionaliteit van de extensie en worden <strong>uitsluitend lokaal op uw apparaat opgeslagen</strong> in de beveiligde opslag van uw Chrome-browser (<code>chrome.storage.local</code>). Wij hebben geen toegang tot deze sleutels en ze worden niet naar onze servers verzonden.</li>
+            
+            <li><strong>Inhoud van implementatieplannen en projectcode:</strong> Wanneer u de "Review Latest Plan" of "Read Project Code" functie gebruikt, leest de extensie de tekst van het meest recente AI-antwoord (implementatieplan) of de geselecteerde projectcode van de Bolt.new-website. Deze tekst wordt tijdelijk verwerkt en direct naar de door u geselecteerde AI-dienst gestuurd voor analyse. De extensie slaat deze inhoud <strong>niet permanent op</strong> en verzendt deze niet naar servers die door ons worden beheerd.</li>
+            
+            <li><strong>Sessiegegevens:</strong> De extensie slaat tijdelijk sessiegegevens op (zoals de laatst gelezen plannen of code) in de lokale opslag van uw browser om de gebruikerservaring te verbeteren. Deze gegevens worden automatisch verwijderd na een uur of wanneer u de extensie de-installeert.</li>
+        </ul>
 
-*   **API-sleutels:** U verstrekt API-sleutels voor de door u gekozen AI-modellen (Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek). Deze sleutels zijn noodzakelijk voor de functionaliteit van de extensie en worden **uitsluitend lokaal op uw apparaat opgeslagen** in de beveiligde opslag van uw Chrome-browser (`chrome.storage.local`). Wij hebben geen toegang tot deze sleutels en ze worden niet naar onze servers verzonden.
-*   **Inhoud van implementatieplannen:** Wanneer u de "Review Latest Plan" functie gebruikt, leest de extensie de tekst van het meest recente AI-antwoord (implementatieplan) van de Bolt.new-website. Deze tekst wordt tijdelijk verwerkt en direct naar de door u geselecteerde AI-dienst gestuurd voor analyse. De extensie slaat deze inhoud **niet permanent op** en verzendt deze niet naar servers die door ons worden beheerd.
+        <h2>2. Hoe wij uw informatie gebruiken</h2>
 
-## 2. Hoe wij uw informatie gebruiken
+        <p>De informatie die door de extensie wordt verwerkt, wordt uitsluitend gebruikt voor de volgende doeleinden:</p>
 
-De informatie die door de extensie wordt verwerkt, wordt uitsluitend gebruikt voor de volgende doeleinden:
+        <ul>
+            <li><strong>Beveiligingsanalyse:</strong> De inhoud van de implementatieplannen en projectcode wordt naar de door u geselecteerde AI-dienst gestuurd om een beveiligingsanalyse uit te voeren en feedback te genereren.</li>
+            <li><strong>Authenticatie:</strong> Uw API-sleutels worden gebruikt om de communicatie met de AI-diensten te authenticeren, zodat de analyse kan plaatsvinden.</li>
+            <li><strong>Extensiefunctionaliteit:</strong> De informatie wordt gebruikt om de kernfuncties van de extensie te leveren, zoals het lezen van plannen, het lezen van projectcode, en het plaatsen van berichten in de chat.</li>
+            <li><strong>Gebruikerservaring:</strong> Sessiegegevens worden gebruikt om de extensie-interface te verbeteren en uw voorkeuren te onthouden tijdens het gebruik.</li>
+        </ul>
 
-*   **Beveiligingsanalyse:** De inhoud van de implementatieplannen wordt naar de door u geselecteerde AI-dienst gestuurd om een beveiligingsanalyse uit te voeren en feedback te genereren.
-*   **Authenticatie:** Uw API-sleutels worden gebruikt om de communicatie met de AI-diensten te authenticeren, zodat de analyse kan plaatsvinden.
-*   **Extensiefunctionaliteit:** De informatie wordt gebruikt om de kernfuncties van de extensie te leveren, zoals het lezen van plannen, het lezen van projectcode (indien geactiveerd), en het plaatsen van berichten in de chat.
+        <h2>3. Hoe wij uw informatie opslaan en beveiligen</h2>
 
-## 3. Hoe wij uw informatie opslaan en beveiligen
+        <div class="highlight">
+            <ul>
+                <li><strong>Lokale opslag:</strong> Uw API-sleutels en sessiegegevens worden lokaal opgeslagen in de beveiligde opslag van uw Chrome-browser. Dit betekent dat de gegevens op uw eigen apparaat blijven en niet toegankelijk zijn voor ons of derden, tenzij zij toegang hebben tot uw browserprofiel.</li>
+                <li><strong>Geen externe servers:</strong> CodeGuardian maakt geen gebruik van externe servers om gebruikersgegevens of API-sleutels op te slaan. Alle verwerking en opslag van gevoelige informatie vindt lokaal plaats.</li>
+                <li><strong>Beveiligde communicatie:</strong> Alle communicatie met de AI-diensten (zoals Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek) vindt plaats via HTTPS, wat zorgt voor versleutelde en beveiligde gegevensoverdracht.</li>
+                <li><strong>Automatische verwijdering:</strong> Sessiegegevens worden automatisch verwijderd na een uur van inactiviteit om de privacy te waarborgen.</li>
+            </ul>
+        </div>
 
-*   **Lokale opslag:** Uw API-sleutels worden lokaal opgeslagen in de beveiligde opslag van uw Chrome-browser. Dit betekent dat de sleutels op uw eigen apparaat blijven en niet toegankelijk zijn voor ons of derden, tenzij zij toegang hebben tot uw browserprofiel.
-*   **Geen externe servers:** CodeGuardian maakt geen gebruik van externe servers om gebruikersgegevens of API-sleutels op te slaan. Alle verwerking en opslag van gevoelige informatie vindt lokaal plaats.
-*   **Beveiligde communicatie:** Alle communicatie met de AI-diensten (zoals Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek) vindt plaats via HTTPS, wat zorgt voor versleutelde en beveiligde gegevensoverdracht.
+        <h2>4. Informatie delen en openbaarmaking</h2>
 
-## 4. Informatie delen en openbaarmaking
+        <p>De CodeGuardian-extensie deelt uw informatie <strong>niet</strong> met derden, behalve in de volgende gevallen:</p>
 
-De CodeGuardian-extensie deelt uw informatie **niet** met derden, behalve in de volgende gevallen:
+        <ul>
+            <li><strong>Met de door u gekozen AI-dienst:</strong> De inhoud van de implementatieplannen en projectcode die u wilt analyseren, wordt direct naar de AI-dienst gestuurd die u in de extensie heeft geselecteerd en geconfigureerd (bijv. Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek). De verwerking van deze gegevens door de AI-dienst valt onder het privacybeleid van de betreffende AI-dienst. Wij raden u aan hun privacybeleid te raadplegen voor meer informatie over hoe zij met uw gegevens omgaan.</li>
+            <li><strong>Wettelijke vereisten:</strong> Wij kunnen informatie openbaar maken indien dit wettelijk vereist is, bijvoorbeeld in reactie op een gerechtelijk bevel of dagvaarding.</li>
+        </ul>
 
-*   **Met de door u gekozen AI-dienst:** De inhoud van de implementatieplannen die u wilt analyseren, wordt direct naar de AI-dienst gestuurd die u in de extensie heeft geselecteerd en geconfigureerd (bijv. Google Gemini, Anthropic Claude, OpenAI GPT, DeepSeek). De verwerking van deze gegevens door de AI-dienst valt onder het privacybeleid van de betreffende AI-dienst. Wij raden u aan hun privacybeleid te raadplegen voor meer informatie over hoe zij met uw gegevens omgaan.
-*   **Wettelijke vereisten:** Wij kunnen informatie openbaar maken indien dit wettelijk vereist is, bijvoorbeeld in reactie op een gerechtelijk bevel of dagvaarding.
+        <div class="warning">
+            <h3>⚠️ Belangrijke opmerking over AI-diensten</h3>
+            <p>Wanneer u CodeGuardian gebruikt, worden uw implementatieplannen en projectcode direct naar de door u gekozen AI-dienst verzonden. Elke AI-dienst heeft zijn eigen privacybeleid en gegevensverwerking:</p>
+            <ul>
+                <li><strong>Google Gemini:</strong> <a href="https://policies.google.com/privacy" target="_blank">Google Privacy Policy</a></li>
+                <li><strong>Anthropic Claude:</strong> <a href="https://www.anthropic.com/privacy" target="_blank">Anthropic Privacy Policy</a></li>
+                <li><strong>OpenAI GPT:</strong> <a href="https://openai.com/privacy/" target="_blank">OpenAI Privacy Policy</a></li>
+                <li><strong>DeepSeek:</strong> <a href="https://www.deepseek.com/privacy" target="_blank">DeepSeek Privacy Policy</a></li>
+            </ul>
+        </div>
 
-## 5. Uw keuzes en rechten
+        <h2>5. Uw keuzes en rechten</h2>
 
-Aangezien CodeGuardian geen persoonlijke identificeerbare informatie verzamelt of opslaat, zijn er geen specifieke rechten met betrekking tot toegang, correctie of verwijdering van persoonlijke gegevens die door ons worden bewaard.
+        <p>Aangezien CodeGuardian geen persoonlijke identificeerbare informatie verzamelt of opslaat, zijn er geen specifieke rechten met betrekking tot toegang, correctie of verwijdering van persoonlijke gegevens die door ons worden bewaard.</p>
 
-U heeft echter wel controle over de API-sleutels die u in de extensie opslaat:
+        <p>U heeft echter wel controle over de gegevens die u in de extensie opslaat:</p>
 
-*   **Verwijderen van API-sleutels:** U kunt uw opgeslagen API-sleutels op elk moment verwijderen via de configuratie-instellingen van de extensie.
-*   **De-installatie van de extensie:** U kunt de CodeGuardian-extensie op elk moment de-installeren via de extensiebeheerpagina van uw Chrome-browser. Bij de-installatie worden alle lokaal opgeslagen API-sleutels en sessiegegevens verwijderd.
+        <ul>
+            <li><strong>Verwijderen van API-sleutels:</strong> U kunt uw opgeslagen API-sleutels op elk moment verwijderen via de configuratie-instellingen van de extensie.</li>
+            <li><strong>Wissen van sessiegegevens:</strong> U kunt de lokale opslag van de extensie wissen via de Chrome-instellingen of door de extensie opnieuw te installeren.</li>
+            <li><strong>De-installatie van de extensie:</strong> U kunt de CodeGuardian-extensie op elk moment de-installeren via de extensiebeheerpagina van uw Chrome-browser. Bij de-installatie worden alle lokaal opgeslagen API-sleutels en sessiegegevens automatisch verwijderd.</li>
+            <li><strong>Keuze van AI-dienst:</strong> U heeft volledige controle over welke AI-dienst u gebruikt en kunt op elk moment wisselen tussen verschillende providers.</li>
+        </ul>
 
-## 6. Wijzigingen in dit privacybeleid
+        <h2>6. Gegevensretentie</h2>
 
-We kunnen dit privacybeleid van tijd tot tijd bijwerken. Wijzigingen worden van kracht zodra ze op deze pagina worden geplaatst. Wij raden u aan dit privacybeleid regelmatig te controleren op eventuele wijzigingen.
+        <ul>
+            <li><strong>API-sleutels:</strong> Worden bewaard totdat u ze handmatig verwijdert of de extensie de-installeert.</li>
+            <li><strong>Sessiegegevens:</strong> Worden automatisch verwijderd na 1 uur van inactiviteit.</li>
+            <li><strong>Configuratie-instellingen:</strong> Worden bewaard totdat u de extensie de-installeert.</li>
+            <li><strong>Geen permanente opslag:</strong> Implementatieplannen en projectcode worden nooit permanent opgeslagen door de extensie.</li>
+        </ul>
 
-## 7. Contact met ons opnemen
+        <h2>7. Beveiliging van minderjarigen</h2>
 
-Als u vragen heeft over dit privacybeleid of de privacypraktijken van CodeGuardian, kunt u contact met ons opnemen via:
+        <p>CodeGuardian is niet specifiek gericht op minderjarigen onder de 13 jaar. Wij verzamelen niet bewust persoonlijke informatie van kinderen onder de 13 jaar. Als u een ouder of voogd bent en u denkt dat uw kind ons persoonlijke informatie heeft verstrekt, neem dan contact met ons op.</p>
 
-E-mail: support@codeguardian.dev
-GitHub: [Link naar uw GitHub-repository, bijv. `https://github.com/your-username/codeguardian-extension`](https://github.com/your-username/codeguardian-extension)
+        <h2>8. Internationale gegevensoverdracht</h2>
+
+        <p>Wanneer u CodeGuardian gebruikt, kunnen uw gegevens worden overgedragen naar en verwerkt in landen buiten uw woonland, afhankelijk van de AI-dienst die u kiest. Deze overdrachten vinden plaats in overeenstemming met de toepasselijke privacywetgeving en de voorwaarden van de betreffende AI-dienst.</p>
+
+        <h2>9. Wijzigingen in dit privacybeleid</h2>
+
+        <p>We kunnen dit privacybeleid van tijd tot tijd bijwerken om wijzigingen in onze praktijken of om andere operationele, juridische of regelgevingsredenen weer te geven. Wijzigingen worden van kracht zodra ze op deze pagina worden geplaatst. Wij raden u aan dit privacybeleid regelmatig te controleren op eventuele wijzigingen.</p>
+
+        <p>Bij belangrijke wijzigingen zullen wij u informeren via:</p>
+        <ul>
+            <li>Een kennisgeving in de extensie</li>
+            <li>Een update van de "laatst bijgewerkt" datum bovenaan dit document</li>
+            <li>Indien mogelijk, een e-mailnotificatie (als u contact met ons heeft opgenomen)</li>
+        </ul>
+
+        <h2>10. Contact met ons opnemen</h2>
+
+        <div class="contact-info">
+            <p>Als u vragen heeft over dit privacybeleid of de privacypraktijken van CodeGuardian, kunt u contact met ons opnemen via:</p>
+
+            <ul>
+                <li><strong>E-mail:</strong> <a href="mailto:support@codeguardian.dev">support@codeguardian.dev</a></li>
+                <li><strong>GitHub:</strong> <a href="https://github.com/codeguardian-extension/codeguardian" target="_blank">https://github.com/codeguardian-extension/codeguardian</a></li>
+                <li><strong>Issues & Support:</strong> <a href="https://github.com/codeguardian-extension/codeguardian/issues" target="_blank">GitHub Issues</a></li>
+            </ul>
+
+            <p><strong>Reactietijd:</strong> Wij streven ernaar om binnen 48 uur te reageren op privacygerelateerde vragen.</p>
+        </div>
+
+        <h2>11. Toepasselijk recht</h2>
+
+        <p>Dit privacybeleid wordt beheerst door en geïnterpreteerd in overeenstemming met de wetten van Nederland. Voor geschillen die voortvloeien uit of verband houden met dit privacybeleid zijn de Nederlandse rechtbanken exclusief bevoegd.</p>
+
+        <div class="highlight">
+            <h3>📋 Samenvatting van uw privacy</h3>
+            <ul>
+                <li>✅ Geen persoonlijke gegevens verzameld</li>
+                <li>✅ API-sleutels alleen lokaal opgeslagen</li>
+                <li>✅ Geen externe servers voor gegevensopslag</li>
+                <li>✅ Directe communicatie met AI-diensten</li>
+                <li>✅ Automatische verwijdering van sessiegegevens</li>
+                <li>✅ Volledige controle over uw gegevens</li>
+                <li>✅ Transparante gegevensverwerking</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
