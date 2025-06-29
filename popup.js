@@ -290,7 +290,7 @@ Focus on:
 Be thorough but concise. Only flag real security concerns, not minor style issues.`;
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.geminiApiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -651,7 +651,191 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
   }
   
   openHelp() {
-    chrome.tabs.create({ url: 'https://github.com/your-username/codeguardian-extension' });
+    // Create a comprehensive help page content
+    const helpContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeGuardian Help</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #495057;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        .feature {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        .step {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', monospace;
+        }
+        .warning {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ CodeGuardian Help</h1>
+        
+        <h2>🚀 Getting Started</h2>
+        <div class="feature">
+            <h3>1. Setup API Key</h3>
+            <div class="step">Visit <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a> to get your Gemini API key</div>
+            <div class="step">Enter the API key in the Configuration section</div>
+            <div class="step">Click "Save" to store it securely</div>
+        </div>
+        
+        <div class="feature">
+            <h3>2. Navigate to Bolt.new</h3>
+            <div class="step">Open any bolt.new project in your browser</div>
+            <div class="step">The extension will automatically detect the page</div>
+            <div class="step">Status indicator will show "Connected to bolt.new"</div>
+        </div>
+        
+        <h2>🔍 Security Review Process</h2>
+        <div class="feature">
+            <h3>Automated Security Analysis</h3>
+            <p>CodeGuardian performs a 4-step security review:</p>
+            <div class="step"><strong>Step 1:</strong> Reads the latest Bolt AI implementation plan</div>
+            <div class="step"><strong>Step 2:</strong> Analyzes the plan using Gemini AI for security vulnerabilities</div>
+            <div class="step"><strong>Step 3:</strong> Generates a comprehensive security feedback prompt</div>
+            <div class="step"><strong>Step 4:</strong> Inserts the prompt into bolt.new chat input</div>
+        </div>
+        
+        <h2>🛠️ Features</h2>
+        <div class="feature">
+            <h3>🔍 Security Review</h3>
+            <p>Analyzes implementation plans for:</p>
+            <ul>
+                <li>Authentication & authorization vulnerabilities</li>
+                <li>Data validation & sanitization</li>
+                <li>SQL injection & XSS prevention</li>
+                <li>Secure API design</li>
+                <li>Proper error handling</li>
+                <li>Secrets management</li>
+                <li>HTTPS & encryption</li>
+                <li>Rate limiting & DoS protection</li>
+            </ul>
+        </div>
+        
+        <div class="feature">
+            <h3>🚀 Quick Actions</h3>
+            <p><strong>Read Latest Plan:</strong> Extract current Bolt AI implementation plan</p>
+            <p><strong>Read Project Code:</strong> Analyze existing project files</p>
+            <p><strong>Manual Input:</strong> Send custom security prompts</p>
+        </div>
+        
+        <h2>⚠️ Troubleshooting</h2>
+        <div class="warning">
+            <h3>Common Issues</h3>
+            <p><strong>Extension Not Connecting:</strong></p>
+            <ul>
+                <li>Refresh the bolt.new page</li>
+                <li>Check if you're on the correct URL (bolt.new/*)</li>
+                <li>Reload the extension in chrome://extensions/</li>
+            </ul>
+            
+            <p><strong>API Key Issues:</strong></p>
+            <ul>
+                <li>Verify API key is correct and active</li>
+                <li>Check Google AI Studio for usage limits</li>
+                <li>Ensure API key has Gemini access permissions</li>
+            </ul>
+            
+            <p><strong>Review Process Fails:</strong></p>
+            <ul>
+                <li>Check internet connection</li>
+                <li>Verify bolt.new page has loaded completely</li>
+                <li>Try refreshing both the page and extension</li>
+            </ul>
+        </div>
+        
+        <h2>🔒 Security & Privacy</h2>
+        <div class="success">
+            <h3>Your Data is Safe</h3>
+            <ul>
+                <li><strong>Local Storage:</strong> API keys stored locally in Chrome's secure storage</li>
+                <li><strong>No Data Collection:</strong> Extension doesn't collect or transmit user data</li>
+                <li><strong>Direct API:</strong> Communicates directly with Google's Gemini API</li>
+                <li><strong>HTTPS Only:</strong> All communications use secure encryption</li>
+            </ul>
+        </div>
+        
+        <h2>📞 Support</h2>
+        <p>Need help? Contact us:</p>
+        <ul>
+            <li><strong>GitHub:</strong> <a href="https://github.com/your-username/codeguardian-extension" target="_blank">Report Issues</a></li>
+            <li><strong>Email:</strong> support@codeguardian.dev</li>
+        </ul>
+        
+        <h2>🎯 Tips for Best Results</h2>
+        <div class="feature">
+            <ul>
+                <li>Ensure Bolt AI has provided a detailed implementation plan before reviewing</li>
+                <li>Review the generated security prompt before sending to Bolt AI</li>
+                <li>Use the manual input feature for custom security requirements</li>
+                <li>Regularly update your API key if needed</li>
+                <li>Keep the extension updated for the latest security checks</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+    
+    // Create a blob with the help content and open it in a new tab
+    const blob = new Blob([helpContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    chrome.tabs.create({ url: url });
   }
 }
 
