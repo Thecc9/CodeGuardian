@@ -2,7 +2,13 @@ class CodeGuardianAssistant {
   constructor() {
     this.isBoltNewPage = false;
     this.contentScriptReady = false;
-    this.geminiApiKey = '';
+    this.selectedModel = 'gemini';
+    this.apiKeys = {
+      gemini: '',
+      claude: '',
+      openai: '',
+      deepseek: ''
+    };
     this.sessionState = {
       planContent: '',
       codeContent: '',
@@ -17,27 +23,31 @@ class CodeGuardianAssistant {
   async init() {
     console.log('🚀 CodeGuardian initialized');
     await this.loadSessionState();
-    await this.loadApiKey();
+    await this.loadApiKeys();
     this.checkBoltNewPage();
     this.bindEvents();
     this.restoreUIState();
     this.updateUI();
   }
   
-  async loadApiKey() {
+  async loadApiKeys() {
     try {
-      const stored = await chrome.storage.local.get('geminiApiKey');
-      if (stored.geminiApiKey) {
-        this.geminiApiKey = stored.geminiApiKey;
-        document.getElementById('geminiApiKey').value = '••••••••••••••••';
+      const stored = await chrome.storage.local.get(['apiKeys', 'selectedModel']);
+      if (stored.apiKeys) {
+        this.apiKeys = { ...this.apiKeys, ...stored.apiKeys };
       }
+      if (stored.selectedModel) {
+        this.selectedModel = stored.selectedModel;
+        document.getElementById('aiModelSelect').value = this.selectedModel;
+      }
+      this.updateApiKeyUI();
     } catch (error) {
-      console.error('❌ Error loading API key:', error);
+      console.error('❌ Error loading API keys:', error);
     }
   }
   
   async saveApiKey() {
-    const apiKeyInput = document.getElementById('geminiApiKey');
+    const apiKeyInput = document.getElementById('apiKey');
     const apiKey = apiKeyInput.value.trim();
     
     if (!apiKey || apiKey === '••••••••••••••••') {
@@ -46,13 +56,59 @@ class CodeGuardianAssistant {
     }
     
     try {
-      await chrome.storage.local.set({ geminiApiKey: apiKey });
-      this.geminiApiKey = apiKey;
+      this.apiKeys[this.selectedModel] = apiKey;
+      await chrome.storage.local.set({ 
+        apiKeys: this.apiKeys,
+        selectedModel: this.selectedModel
+      });
+      
       apiKeyInput.value = '••••••••••••••••';
       this.showSuccess('saveApiKey', 'API key saved successfully!');
     } catch (error) {
       console.error('❌ Error saving API key:', error);
       this.showError('saveApiKey', 'Failed to save API key');
+    }
+  }
+  
+  updateApiKeyUI() {
+    const modelSelect = document.getElementById('aiModelSelect');
+    const apiKeyLabel = document.getElementById('apiKeyLabel');
+    const apiKeyInput = document.getElementById('apiKey');
+    const apiKeyHelp = document.getElementById('apiKeyHelp');
+    
+    const modelConfig = {
+      gemini: {
+        label: 'Gemini API Key:',
+        placeholder: 'Enter your Gemini API key...',
+        helpText: 'Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>'
+      },
+      claude: {
+        label: 'Claude API Key:',
+        placeholder: 'Enter your Claude API key...',
+        helpText: 'Get your API key from <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a>'
+      },
+      openai: {
+        label: 'OpenAI API Key:',
+        placeholder: 'Enter your OpenAI API key...',
+        helpText: 'Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>'
+      },
+      deepseek: {
+        label: 'DeepSeek API Key:',
+        placeholder: 'Enter your DeepSeek API key...',
+        helpText: 'Get your API key from <a href="https://platform.deepseek.com/" target="_blank">DeepSeek Platform</a>'
+      }
+    };
+    
+    const config = modelConfig[this.selectedModel];
+    apiKeyLabel.textContent = config.label;
+    apiKeyInput.placeholder = config.placeholder;
+    apiKeyHelp.innerHTML = config.helpText;
+    
+    // Show masked key if exists, otherwise empty
+    if (this.apiKeys[this.selectedModel]) {
+      apiKeyInput.value = '••••••••••••••••';
+    } else {
+      apiKeyInput.value = '';
     }
   }
   
@@ -138,6 +194,13 @@ class CodeGuardianAssistant {
       this.performSecurityReview();
     });
     
+    // AI model selection
+    document.getElementById('aiModelSelect').addEventListener('change', (e) => {
+      this.selectedModel = e.target.value;
+      this.updateApiKeyUI();
+      chrome.storage.local.set({ selectedModel: this.selectedModel });
+    });
+    
     // API key management
     document.getElementById('saveApiKey').addEventListener('click', () => {
       this.saveApiKey();
@@ -178,8 +241,8 @@ class CodeGuardianAssistant {
       return;
     }
     
-    if (!this.geminiApiKey) {
-      this.showError('reviewBtn', 'Please configure your Gemini API key first');
+    if (!this.apiKeys[this.selectedModel]) {
+      this.showError('reviewBtn', `Please configure your ${this.selectedModel.toUpperCase()} API key first`);
       return;
     }
     
@@ -207,9 +270,9 @@ class CodeGuardianAssistant {
       
       this.updateReviewStep('read', 'complete');
       
-      // Step 2: Analyze with Gemini
+      // Step 2: Analyze with selected AI
       this.updateReviewStep('analyze', 'active');
-      const analysis = await this.analyzeWithGemini(planResponse.plan);
+      const analysis = await this.analyzeWithAI(planResponse.plan);
       this.updateReviewStep('analyze', 'complete');
       
       // Step 3: Generate security prompt
@@ -257,8 +320,158 @@ class CodeGuardianAssistant {
     }
   }
   
-  async analyzeWithGemini(planContent) {
-    const prompt = `You are CodeGuardian, an AI security expert that reviews code implementation plans for security vulnerabilities and best practices.
+  async analyzeWithAI(planContent) {
+    switch (this.selectedModel) {
+      case 'gemini':
+        return await this._analyzeWithGemini(planContent);
+      case 'claude':
+        return await this._analyzeWithClaude(planContent);
+      case 'openai':
+        return await this._analyzeWithOpenAI(planContent);
+      case 'deepseek':
+        return await this._analyzeWithDeepSeek(planContent);
+      default:
+        throw new Error('Unknown AI model selected');
+    }
+  }
+  
+  async _analyzeWithGemini(planContent) {
+    const prompt = this.getSecurityAnalysisPrompt(planContent);
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKeys.gemini}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.candidates[0].content.parts[0].text;
+      
+      return this.parseAnalysisResponse(analysisText);
+    } catch (error) {
+      console.error('❌ Gemini API error:', error);
+      throw new Error('Failed to analyze with Gemini AI: ' + error.message);
+    }
+  }
+  
+  async _analyzeWithClaude(planContent) {
+    const prompt = this.getSecurityAnalysisPrompt(planContent);
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKeys.claude,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-sonnet-20240229',
+          max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: prompt
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.content[0].text;
+      
+      return this.parseAnalysisResponse(analysisText);
+    } catch (error) {
+      console.error('❌ Claude API error:', error);
+      throw new Error('Failed to analyze with Claude AI: ' + error.message);
+    }
+  }
+  
+  async _analyzeWithOpenAI(planContent) {
+    const prompt = this.getSecurityAnalysisPrompt(planContent);
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKeys.openai}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [{
+            role: 'user',
+            content: prompt
+          }],
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.choices[0].message.content;
+      
+      return this.parseAnalysisResponse(analysisText);
+    } catch (error) {
+      console.error('❌ OpenAI API error:', error);
+      throw new Error('Failed to analyze with OpenAI: ' + error.message);
+    }
+  }
+  
+  async _analyzeWithDeepSeek(planContent) {
+    const prompt = this.getSecurityAnalysisPrompt(planContent);
+
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKeys.deepseek}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [{
+            role: 'user',
+            content: prompt
+          }],
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.choices[0].message.content;
+      
+      return this.parseAnalysisResponse(analysisText);
+    } catch (error) {
+      console.error('❌ DeepSeek API error:', error);
+      throw new Error('Failed to analyze with DeepSeek: ' + error.message);
+    }
+  }
+  
+  getSecurityAnalysisPrompt(planContent) {
+    return `You are CodeGuardian, an AI security expert that reviews code implementation plans for security vulnerabilities and best practices.
 
 Analyze the following Bolt AI implementation plan and provide a comprehensive security assessment:
 
@@ -288,29 +501,10 @@ Focus on:
 - Secure coding practices
 
 Be thorough but concise. Only flag real security concerns, not minor style issues.`;
-
+  }
+  
+  parseAnalysisResponse(analysisText) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const analysisText = data.candidates[0].content.parts[0].text;
-      
       // Try to extract JSON from the response
       const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -327,8 +521,15 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
         };
       }
     } catch (error) {
-      console.error('❌ Gemini API error:', error);
-      throw new Error('Failed to analyze with Gemini AI: ' + error.message);
+      console.error('❌ Error parsing analysis response:', error);
+      return {
+        securityScore: 5,
+        criticalIssues: ['Failed to parse security analysis'],
+        recommendations: [analysisText],
+        bestPractices: [],
+        overallAssessment: "Analysis parsing failed, manual review recommended",
+        shouldImplement: false
+      };
     }
   }
   
@@ -393,7 +594,7 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
         </div>
         <div class="progress-step">
           <div class="progress-icon pending" id="step-analyze">2</div>
-          <span>Analyzing with Gemini AI...</span>
+          <span>Analyzing with ${this.selectedModel.toUpperCase()} AI...</span>
         </div>
         <div class="progress-step">
           <div class="progress-icon pending" id="step-generate">3</div>
@@ -720,6 +921,13 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
             border-radius: 6px;
             margin: 15px 0;
         }
+        .model-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
     </style>
 </head>
 <body>
@@ -728,17 +936,48 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
         
         <h2>🚀 Getting Started</h2>
         <div class="feature">
-            <h3>1. Setup API Key</h3>
-            <div class="step">Visit <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a> to get your Gemini API key</div>
+            <h3>1. Choose Your AI Model</h3>
+            <div class="step">Select from Gemini, Claude, OpenAI, or DeepSeek in the Configuration section</div>
+            <div class="step">Each model offers different strengths for security analysis</div>
+        </div>
+        
+        <div class="feature">
+            <h3>2. Setup API Key</h3>
+            <div class="step">Get your API key from the respective platform</div>
             <div class="step">Enter the API key in the Configuration section</div>
             <div class="step">Click "Save" to store it securely</div>
         </div>
         
         <div class="feature">
-            <h3>2. Navigate to Bolt.new</h3>
+            <h3>3. Navigate to Bolt.new</h3>
             <div class="step">Open any bolt.new project in your browser</div>
             <div class="step">The extension will automatically detect the page</div>
             <div class="step">Status indicator will show "Connected to bolt.new"</div>
+        </div>
+        
+        <h2>🤖 AI Models</h2>
+        <div class="model-info">
+            <h3>Google Gemini</h3>
+            <p><strong>Best for:</strong> Comprehensive analysis, code understanding</p>
+            <p><strong>API Key:</strong> <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
+        </div>
+        
+        <div class="model-info">
+            <h3>Anthropic Claude</h3>
+            <p><strong>Best for:</strong> Detailed reasoning, security best practices</p>
+            <p><strong>API Key:</strong> <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a></p>
+        </div>
+        
+        <div class="model-info">
+            <h3>OpenAI GPT</h3>
+            <p><strong>Best for:</strong> General analysis, well-rounded feedback</p>
+            <p><strong>API Key:</strong> <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></p>
+        </div>
+        
+        <div class="model-info">
+            <h3>DeepSeek</h3>
+            <p><strong>Best for:</strong> Code-focused analysis, technical depth</p>
+            <p><strong>API Key:</strong> <a href="https://platform.deepseek.com/" target="_blank">DeepSeek Platform</a></p>
         </div>
         
         <h2>🔍 Security Review Process</h2>
@@ -746,14 +985,14 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
             <h3>Automated Security Analysis</h3>
             <p>CodeGuardian performs a 4-step security review:</p>
             <div class="step"><strong>Step 1:</strong> Reads the latest Bolt AI implementation plan</div>
-            <div class="step"><strong>Step 2:</strong> Analyzes the plan using Gemini AI for security vulnerabilities</div>
+            <div class="step"><strong>Step 2:</strong> Analyzes the plan using your selected AI model</div>
             <div class="step"><strong>Step 3:</strong> Generates a comprehensive security feedback prompt</div>
             <div class="step"><strong>Step 4:</strong> Inserts the prompt into bolt.new chat input</div>
         </div>
         
         <h2>🛠️ Features</h2>
         <div class="feature">
-            <h3>🔍 Security Review</h3>
+            <h3>🔍 Multi-Model Security Review</h3>
             <p>Analyzes implementation plans for:</p>
             <ul>
                 <li>Authentication & authorization vulnerabilities</li>
@@ -787,8 +1026,9 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
             <p><strong>API Key Issues:</strong></p>
             <ul>
                 <li>Verify API key is correct and active</li>
-                <li>Check Google AI Studio for usage limits</li>
-                <li>Ensure API key has Gemini access permissions</li>
+                <li>Check the respective platform for usage limits</li>
+                <li>Ensure API key has proper permissions</li>
+                <li>Try switching to a different AI model</li>
             </ul>
             
             <p><strong>Review Process Fails:</strong></p>
@@ -796,6 +1036,7 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
                 <li>Check internet connection</li>
                 <li>Verify bolt.new page has loaded completely</li>
                 <li>Try refreshing both the page and extension</li>
+                <li>Switch to a different AI model if one is having issues</li>
             </ul>
         </div>
         
@@ -805,8 +1046,9 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
             <ul>
                 <li><strong>Local Storage:</strong> API keys stored locally in Chrome's secure storage</li>
                 <li><strong>No Data Collection:</strong> Extension doesn't collect or transmit user data</li>
-                <li><strong>Direct API:</strong> Communicates directly with Google's Gemini API</li>
+                <li><strong>Direct API:</strong> Communicates directly with AI providers</li>
                 <li><strong>HTTPS Only:</strong> All communications use secure encryption</li>
+                <li><strong>Multi-Provider:</strong> Choose your preferred AI provider</li>
             </ul>
         </div>
         
@@ -820,11 +1062,13 @@ Be thorough but concise. Only flag real security concerns, not minor style issue
         <h2>🎯 Tips for Best Results</h2>
         <div class="feature">
             <ul>
+                <li>Try different AI models for varied perspectives on security</li>
                 <li>Ensure Bolt AI has provided a detailed implementation plan before reviewing</li>
                 <li>Review the generated security prompt before sending to Bolt AI</li>
                 <li>Use the manual input feature for custom security requirements</li>
-                <li>Regularly update your API key if needed</li>
-                <li>Keep the extension updated for the latest security checks</li>
+                <li>Keep your API keys updated and monitor usage limits</li>
+                <li>Claude excels at detailed reasoning, Gemini at code analysis</li>
+                <li>OpenAI provides balanced feedback, DeepSeek focuses on technical depth</li>
             </ul>
         </div>
     </div>

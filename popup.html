@@ -39,12 +39,21 @@
       <div class="section">
         <h3>⚙️ Configuration</h3>
         <div class="config-item">
-          <label for="geminiApiKey">Gemini API Key:</label>
+          <label for="aiModelSelect">AI Model:</label>
+          <select id="aiModelSelect" class="model-select">
+            <option value="gemini">Google Gemini</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <label for="apiKey" id="apiKeyLabel">Gemini API Key:</label>
           <div class="input-group">
-            <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key..." />
+            <input type="password" id="apiKey" placeholder="Enter your API key..." />
             <button id="saveApiKey" class="save-btn">Save</button>
           </div>
-          <small class="help-text">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+          <small class="help-text" id="apiKeyHelp">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
         </div>
       </div>
       
