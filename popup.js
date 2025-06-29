@@ -296,11 +296,11 @@ class BoltNewAssistant {
     const button = document.getElementById('readPlanBtn');
     const content = document.getElementById('planContent');
     
-    button.textContent = 'Reading AI Message...';
+    button.textContent = 'Reading Plan...';
     button.disabled = true;
     
     try {
-      console.log('📋 Sending readLatestPlan message (latest AI message)...');
+      console.log('📋 Sending readLatestPlan message (latest AI plan)...');
       
       const response = await this.sendMessageToContentScript({ 
         action: 'readLatestPlan' 
@@ -318,15 +318,15 @@ class BoltNewAssistant {
         this.sessionState.lastOperation = 'readPlan';
         this.saveSessionState();
         
-        this.showSuccess('readPlanBtn', 'Latest AI message read successfully!');
+        this.showSuccess('readPlanBtn', 'Latest plan read successfully!');
       } else {
-        this.showError('readPlanBtn', response?.error || 'Failed to read latest AI message');
+        this.showError('readPlanBtn', response?.error || 'Failed to read latest plan');
       }
     } catch (error) {
       console.error('💥 Error reading plan:', error);
       this.showError('readPlanBtn', error.message);
     } finally {
-      button.textContent = 'Read Latest AI Message';
+      button.textContent = 'Read Latest Plan';
       button.disabled = false;
     }
   }

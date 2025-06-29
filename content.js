@@ -98,7 +98,7 @@ class BoltNewAssistant {
   }
   
   async readLatestPlan(sendResponse) {
-    console.log('📋 Attempting to read latest AI message...');
+    console.log('📋 Attempting to read latest AI plan message...');
     
     try {
       let latestAIMessage = '';
@@ -141,25 +141,47 @@ class BoltNewAssistant {
           
           // Check if this looks like an AI response
           if (this.isAIMessage(element, text)) {
+            const isPlan = this.isPlanMessage(element, text);
+            const confidence = isPlan ? this.getPlanConfidence(element, text) : this.getAIConfidence(element, text);
+            
             aiMessages.push({
               element: element,
               text: text,
               domPosition: index,
-              confidence: this.getAIConfidence(element, text)
+              confidence: confidence,
+              isPlan: isPlan
             });
           }
         });
         
         if (aiMessages.length > 0) {
-          // Sort by DOM position (later in DOM = more recent), then by confidence
-          aiMessages.sort((a, b) => {
-            const positionDiff = b.domPosition - a.domPosition;
-            if (Math.abs(positionDiff) > 2) return positionDiff;
-            return b.confidence - a.confidence;
-          });
+          // Separate plan messages from regular AI messages
+          const planMessages = aiMessages.filter(msg => msg.isPlan);
+          const regularMessages = aiMessages.filter(msg => !msg.isPlan);
           
-          latestAIMessage = aiMessages[0].text;
-          console.log(`✅ Found latest AI message (confidence: ${aiMessages[0].confidence.toFixed(2)})`);
+          let selectedMessage;
+          
+          if (planMessages.length > 0) {
+            // Prioritize plan messages - sort by recency then confidence
+            planMessages.sort((a, b) => {
+              const positionDiff = b.domPosition - a.domPosition;
+              if (Math.abs(positionDiff) > 2) return positionDiff;
+              return b.confidence - a.confidence;
+            });
+            selectedMessage = planMessages[0];
+            console.log(`✅ Found plan message (confidence: ${selectedMessage.confidence.toFixed(2)})`);
+          } else {
+            // Fall back to regular AI messages
+            regularMessages.sort((a, b) => {
+              const positionDiff = b.domPosition - a.domPosition;
+              if (Math.abs(positionDiff) > 2) return positionDiff;
+              return b.confidence - a.confidence;
+            });
+            selectedMessage = regularMessages[0];
+            console.log(`✅ Found AI message (confidence: ${selectedMessage.confidence.toFixed(2)})`);
+          }
+          
+          latestAIMessage = selectedMessage.text;
           foundLastMessage = true;
           break;
         }
@@ -186,21 +208,45 @@ class BoltNewAssistant {
           elements.forEach(element => {
             const text = element.textContent?.trim();
             if (text && text.length > 50 && text.length < 8000) {
+              const isPlan = this.isPlanMessage(element, text);
+              const confidence = isPlan ? this.getPlanConfidence(element, text) : this.getAIConfidence(element, text);
+              
               aiElements.push({
                 element: element,
                 text: text,
                 selector: selector,
-                position: this.getElementPosition(element)
+                position: this.getElementPosition(element),
+                isPlan: isPlan,
+                confidence: confidence
               });
             }
           });
         }
         
         if (aiElements.length > 0) {
-          // Sort by DOM position (higher = more recent)
-          aiElements.sort((a, b) => b.position - a.position);
-          latestAIMessage = aiElements[0].text;
-          console.log(`✅ Found AI message via fallback: ${aiElements[0].selector}`);
+          // Separate plan messages from regular AI messages
+          const planElements = aiElements.filter(el => el.isPlan);
+          const regularElements = aiElements.filter(el => !el.isPlan);
+          
+          let selectedElement;
+          
+          if (planElements.length > 0) {
+            // Prioritize plan messages - sort by position then confidence
+            planElements.sort((a, b) => {
+              const positionDiff = b.position - a.position;
+              if (Math.abs(positionDiff) > 1000) return positionDiff;
+              return b.confidence - a.confidence;
+            });
+            selectedElement = planElements[0];
+            console.log(`✅ Found plan message via fallback: ${selectedElement.selector} (confidence: ${selectedElement.confidence.toFixed(2)})`);
+          } else {
+            // Fall back to regular AI messages
+            regularElements.sort((a, b) => b.position - a.position);
+            selectedElement = regularElements[0];
+            console.log(`✅ Found AI message via fallback: ${selectedElement.selector}`);
+          }
+          
+          latestAIMessage = selectedElement.text;
           foundLastMessage = true;
         }
       }
@@ -214,16 +260,16 @@ class BoltNewAssistant {
           latestAIMessage = latestAIMessage.substring(0, 2500) + '...\n\n(truncated for display)';
         }
         
-        console.log('✅ Successfully found latest AI message');
+        console.log('✅ Successfully found latest AI plan/message');
         sendResponse({ 
           success: true, 
           plan: latestAIMessage
         });
       } else {
-        console.log('❌ No AI message found');
+        console.log('❌ No AI plan/message found');
         sendResponse({ 
           success: false, 
-          error: 'No AI response found. Try having a conversation with Bolt first, or ensure the AI has responded recently.' 
+          error: 'No AI plan or response found. Try asking Bolt to create a plan or provide structured guidance.' 
         });
       }
     } catch (error) {
@@ -312,6 +358,76 @@ class BoltNewAssistant {
     }
     
     return text.length > 80; // Basic fallback - longer text might be AI
+  }
+
+  isPlanMessage(element, text) {
+    // Check if this message contains a plan or actionable content
+    const planIndicators = [
+      'the plan',
+      'plan:',
+      'steps:',
+      'action plan',
+      'here\'s what',
+      'to fix this',
+      'solution:',
+      'approach:',
+      'strategy:',
+      'implementation:',
+      'next steps',
+      'recommended steps'
+    ];
+    
+    const textLower = text.toLowerCase();
+    
+    // Check for explicit plan indicators
+    const hasPlanKeywords = planIndicators.some(indicator => textLower.includes(indicator));
+    
+    // Check for structured content (numbered lists, action items)
+    const hasNumberedSteps = /\d+\.\s*\*?\*?[A-Z]/.test(text); // Patterns like "1. **Step"
+    const hasBulletPoints = text.includes('- ') || text.includes('• ');
+    const hasActionWords = /\b(create|modify|update|change|add|remove|fix|implement|configure|setup|install)\b/i.test(text);
+    
+    // Check for structured headings
+    const hasHeadings = text.includes('##') || text.includes('###') || /\*\*[A-Z][^*]+\*\*/.test(text);
+    
+    // Check for file/code references (common in plans)
+    const hasFileReferences = /\.(js|ts|html|css|sql|json|md)\b/.test(text) || text.includes('`') || text.includes('```');
+    
+    // Calculate plan confidence score
+    let planScore = 0;
+    if (hasPlanKeywords) planScore += 0.8;
+    if (hasNumberedSteps) planScore += 0.6;
+    if (hasBulletPoints) planScore += 0.3;
+    if (hasActionWords) planScore += 0.4;
+    if (hasHeadings) planScore += 0.3;
+    if (hasFileReferences) planScore += 0.2;
+    if (text.length > 500) planScore += 0.2; // Longer content often contains plans
+    
+    return planScore >= 0.5; // Threshold for plan detection
+  }
+
+  getPlanConfidence(element, text) {
+    // Enhanced confidence scoring that prioritizes plan content
+    let confidence = this.getAIConfidence(element, text);
+    
+    // Add plan-specific confidence boost
+    const textLower = text.toLowerCase();
+    
+    // Strong plan indicators
+    if (textLower.includes('the plan') || textLower.includes('plan:')) confidence += 0.9;
+    if (textLower.includes('steps:') || textLower.includes('action plan')) confidence += 0.8;
+    if (textLower.includes('solution:') || textLower.includes('to fix this')) confidence += 0.7;
+    
+    // Structured content indicators
+    if (/\d+\.\s*\*?\*?[A-Z]/.test(text)) confidence += 0.6; // Numbered steps
+    if (text.includes('##') || /\*\*[A-Z][^*]+\*\*/.test(text)) confidence += 0.4; // Headings
+    if (/\b(modify|create|update|fix|implement)\b/i.test(text)) confidence += 0.3; // Action words
+    
+    // File/technical references
+    if (/\.(js|ts|html|css|sql|json)\b/.test(text)) confidence += 0.3;
+    if (text.includes('```') || (text.match(/`[^`]+`/g) || []).length > 2) confidence += 0.2;
+    
+    return Math.min(confidence, 2.0); // Allow higher confidence for plan content
   }
   
   getAIConfidence(element, text) {
