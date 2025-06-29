@@ -1,206 +1,221 @@
-# Bolt.new Assistant - Enhanced File Reader
+# CodeGuardian - AI-Powered Security Review for Bolt.new
 
-A Chrome extension that can read project files and their content from bolt.new, send chat messages, and extract the latest plans. This enhanced version provides comprehensive file reading capabilities that work directly with bolt.new's HTML structure.
+A Chrome extension that provides intelligent security analysis for bolt.new projects using Google's Gemini AI. CodeGuardian acts as your personal security expert, reviewing implementation plans and providing detailed feedback to ensure secure coding practices.
 
-## Features
+## 🛡️ Features
 
-### 🔥 Enhanced File Reading
-- **Comprehensive File Detection**: Automatically detects all files in the bolt.new file tree
-- **Smart Content Extraction**: Reads content from CodeMirror 6 editors, Monaco editors, and other code editors
-- **Progress Tracking**: Real-time progress indicator showing file reading status
-- **Error Handling**: Detailed error reporting and graceful handling of edge cases
-- **Content Filtering**: Intelligent filtering to exclude binary files, shell commands, and non-code content
+### 🔍 AI-Powered Security Analysis
+- **Gemini AI Integration**: Leverages Google's advanced Gemini AI for comprehensive security analysis
+- **Real-time Review**: Analyzes Bolt AI's latest implementation plans instantly
+- **Intelligent Scoring**: Provides security scores (1-10) with detailed explanations
+- **Critical Issue Detection**: Identifies and prioritizes security vulnerabilities
 
-### 💾 Session Persistence
-- **State Management**: Maintains extension state across popup close/reopen sessions
-- **Ongoing Operations**: Resumes file reading operations if popup is closed during operation
-- **Auto-Save**: Automatically saves chat input text as you type
-- **Content Recovery**: Restores previously read plans and code content
-- **Session Expiry**: Sessions expire after 1 hour for security
+### 🚀 Automated Workflow
+- **One-Click Review**: Single button press to perform complete security analysis
+- **Auto-Generated Prompts**: Creates detailed security feedback prompts automatically
+- **Smart Integration**: Seamlessly inserts analysis into bolt.new chat without manual copying
+- **Progress Tracking**: Visual progress indicators for each step of the review process
 
-### 💬 Chat Integration
-- Send messages directly to bolt.new chat
-- Automatic input field detection and interaction
+### 🔒 Security Focus Areas
+- Authentication and authorization vulnerabilities
+- Data validation and sanitization
+- SQL injection and XSS prevention
+- Secure API design and implementation
+- Proper error handling and logging
+- Secrets management and encryption
+- HTTPS and secure communication
+- Input validation and rate limiting
+- DoS protection and security headers
 
-### 📋 Plan Reading
-- Extract the latest conversation and plans from bolt.new
-- Smart content detection from various message formats
+### 💡 Intelligent Feedback System
+- **Contextual Recommendations**: Provides specific, actionable security improvements
+- **Best Practice Guidance**: Suggests industry-standard security practices
+- **Implementation Approval**: Determines if plans are ready for implementation
+- **Detailed Analysis**: Comprehensive breakdown of security concerns and solutions
 
-## How It Works
+## 🚀 Installation
 
-### File Structure Recognition
+1. **Download the Extension**
+   ```bash
+   git clone https://github.com/your-username/codeguardian-extension
+   cd codeguardian-extension
+   ```
 
-The extension works by analyzing bolt.new's HTML structure:
+2. **Load in Chrome**
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode" in the top right
+   - Click "Load unpacked" and select the extension directory
 
-1. **File Tree Analysis**: Scans for button elements with specific class patterns that represent files
-2. **Icon Detection**: Distinguishes between file icons (`i-ph:file-duotone`) and folder icons (`i-ph:caret-right`)
-3. **Name Extraction**: Retrieves filenames from elements with `translate="no"` attributes
-4. **Content Reading**: Clicks on files to open them and extracts content from the code editor
+3. **Get Gemini API Key**
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key for Gemini
+   - Copy the API key for configuration
 
-### Code Editor Support
+## ⚙️ Configuration
 
-The extension supports multiple editor types commonly used in web development tools:
+1. **Set Up API Key**
+   - Click the CodeGuardian extension icon
+   - Navigate to the Configuration section
+   - Paste your Gemini API key
+   - Click "Save" to store securely
 
-- **CodeMirror 6** (primary editor in bolt.new)
-- **Monaco Editor** (VS Code-based editor)
-- **Generic code editors** with standard HTML structures
-- **Textarea fallbacks** for simple text editors
+2. **Navigate to Bolt.new**
+   - Open any bolt.new project
+   - The extension will automatically detect the page
+   - Status indicator will show "Connected to bolt.new"
 
-### Smart Content Filtering
+## 🔧 Usage
 
-The extension includes intelligent filtering to provide only useful code content:
+### Security Review Workflow
 
-- **File Type Recognition**: Identifies actual code files vs configuration/binary files
-- **Content Analysis**: Uses pattern matching to detect programming languages
-- **Size Filtering**: Excludes extremely large or tiny files
-- **Shell Command Detection**: Filters out terminal commands and build scripts
+1. **Start Review**
+   - Ensure you're on a bolt.new project page
+   - Click the "🔍 Review Latest Plan" button
+   - The extension will begin the automated analysis process
 
-## Installation
+2. **Analysis Process**
+   - **Step 1**: Reads the latest Bolt AI implementation plan
+   - **Step 2**: Sends plan to Gemini AI for security analysis
+   - **Step 3**: Generates comprehensive security feedback prompt
+   - **Step 4**: Inserts the prompt into bolt.new chat input
 
-1. Download or clone this repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension directory
-5. Navigate to bolt.new and the extension will be ready to use
+3. **Review Results**
+   - Review the generated security prompt in the chat input
+   - Modify the prompt if needed
+   - Send to Bolt AI for implementation improvements
+   - Bolt AI will address security concerns and update the plan
 
-## Usage
+### Security Prompt Format
 
-### Reading Project Files
+The generated prompts include:
+- **Security Score**: Overall security rating (1-10)
+- **Critical Issues**: High-priority security vulnerabilities
+- **Recommendations**: Specific improvement suggestions
+- **Best Practices**: Missing security standards
+- **Implementation Decision**: Approve or request revisions
 
-1. Open a project in bolt.new
-2. Click the extension icon in your browser toolbar
-3. Click "Read Project Code"
-4. The extension will:
-   - Switch to code mode if needed
-   - Scan the file tree for all files
-   - Click through each file to read its content
-   - Display a progress indicator
-   - Compile all file contents into a comprehensive report
+### Example Security Review
+
+```
+🛡️ CodeGuardian Security Review
+
+Security Score: 6/10
+
+⚠️ SECURITY CONCERNS IDENTIFIED
+
+The implementation plan has several security gaps that should be addressed before proceeding.
+
+🚨 Critical Security Issues:
+1. No input validation on user registration endpoints
+2. API keys stored in client-side code
+3. Missing rate limiting on authentication endpoints
+
+🔧 Security Recommendations:
+1. Implement server-side input validation with sanitization
+2. Move API keys to environment variables
+3. Add rate limiting middleware (5 requests/minute for auth)
+4. Implement CSRF protection for forms
+5. Add proper error handling without information disclosure
+
+📋 Missing Security Best Practices:
+1. HTTPS enforcement and security headers
+2. Password strength requirements
+3. Session timeout and secure cookie settings
+
+Please revise your implementation plan to address these critical security concerns before proceeding.
+```
+
+## 🛠️ Advanced Features
+
+### Session Management
+- **State Persistence**: Maintains extension state across popup sessions
+- **Auto-Save**: Automatically saves configuration and review history
+- **Session Recovery**: Resumes interrupted review processes
+
+### Quick Actions
+- **Read Latest Plan**: Extract current Bolt AI implementation plan
+- **Read Project Code**: Analyze existing project files
+- **Manual Input**: Send custom security prompts
 
 ### Progress Tracking
+- **Visual Indicators**: Real-time progress for each review step
+- **Error Handling**: Detailed error messages and recovery options
+- **Status Updates**: Clear feedback on extension and connection status
 
-During file reading, you'll see a progress indicator showing:
-- Current file being read
-- Progress bar with percentage
-- File count (current/total)
+## 🔒 Security & Privacy
 
-### Session Persistence
+### Data Protection
+- **Local Storage**: API keys stored locally in Chrome's secure storage
+- **No Data Collection**: Extension doesn't collect or transmit user data
+- **Secure Communication**: All API calls use HTTPS encryption
 
-The extension maintains state across popup sessions:
-- **Auto-Save**: Chat input text is saved as you type
-- **State Recovery**: Previously read plans and code content are restored when reopening
-- **Operation Resumption**: If you close the popup during file reading, the operation continues in the background
-- **Progress Restoration**: When reopened, shows current status and can resume showing progress
-- **Session Timeout**: Stored sessions expire after 1 hour for security
+### API Usage
+- **Direct Integration**: Communicates directly with Google's Gemini API
+- **No Intermediary**: No third-party servers or data processing
+- **Rate Limiting**: Respects API rate limits and usage guidelines
 
-### Results Format
+## 🐛 Troubleshooting
 
-The extension provides results in a structured format:
-```
-=== PROJECT CODE (X files) ===
+### Common Issues
 
-📁 FILES:
-  - package.json
-  - src/index.js
-  - src/components/App.jsx
-  ...
+**Extension Not Connecting**
+- Refresh the bolt.new page
+- Check if you're on the correct URL (bolt.new/*)
+- Reload the extension in chrome://extensions/
 
-==================================================
-📄 FILE: package.json
-==================================================
-{
-  "name": "my-project",
-  ...
-}
+**API Key Issues**
+- Verify API key is correct and active
+- Check Google AI Studio for usage limits
+- Ensure API key has Gemini access permissions
 
-==================================================
-📄 FILE: src/index.js
-==================================================
-import React from 'react';
-...
+**Review Process Fails**
+- Check internet connection
+- Verify bolt.new page has loaded completely
+- Try refreshing both the page and extension
 
-📊 SUMMARY:
-✅ Successfully read: X files
-❌ Errors: Y files
-📊 Total characters: Z
-```
+### Debug Mode
+Enable debug logging by opening Chrome DevTools:
+1. Right-click on the extension popup
+2. Select "Inspect"
+3. Check Console tab for detailed logs
 
-## Technical Details
+## 🤝 Contributing
 
-### File Detection Algorithm
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-The extension uses a multi-method approach to detect files:
+### Development Setup
+```bash
+# Clone repository
+git clone https://github.com/your-username/codeguardian-extension
+cd codeguardian-extension
 
-1. **Primary Method**: Searches for buttons with class `group flex items-center gap-1.5` containing file icons
-2. **Folder Traversal**: Handles expanded folders with nested file structures
-3. **Alternative Layouts**: Supports different bolt.new interface variations
-4. **Deduplication**: Prevents reading the same file multiple times
-
-### Content Extraction Strategies
-
-Multiple strategies ensure reliable content extraction:
-
-1. **CodeMirror 6**: Direct `.cm-content` element reading
-2. **Editor Traversal**: Searches within `.cm-editor` containers
-3. **Monaco Support**: Handles `.view-lines` elements
-4. **Generic Fallbacks**: Works with standard code element structures
-5. **Textarea Support**: Handles simple text input areas
-
-### Error Handling
-
-Comprehensive error handling includes:
-- Network timeout protection
-- Element not found graceful degradation
-- Content extraction failure recovery
-- Progress indicator cleanup
-- Detailed error reporting
-
-## Development
-
-### File Structure
-```
-/
-├── manifest.json          # Extension configuration
-├── popup.html             # Extension popup interface
-├── popup.js              # Popup logic and UI interactions
-├── popup.css             # Popup styling
-├── content.js            # Enhanced content script (main logic)
-├── background.js         # Background service worker
-└── README.md            # Documentation
+# Load extension in Chrome
+# Navigate to chrome://extensions/
+# Enable Developer mode
+# Click "Load unpacked" and select the directory
 ```
 
-### Key Components
+### Testing
+- Test on various bolt.new projects
+- Verify security analysis accuracy
+- Check cross-browser compatibility
 
-- **BoltNewAssistant Class**: Main content script class handling all interactions
-- **File Detection**: Enhanced algorithms for finding files in bolt.new's DOM
-- **Content Extraction**: Multi-strategy approach for reading editor content
-- **Progress Management**: Real-time progress tracking and user feedback
-- **Error Handling**: Comprehensive error management and reporting
+## 📄 License
 
-## Troubleshooting
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### No Files Found
-- Ensure you have a project open in bolt.new
-- Make sure the file tree is visible on the left side
-- Try refreshing the bolt.new page and reopening the extension
+## 🙏 Acknowledgments
 
-### Content Reading Issues
-- Check that files can be opened manually by clicking them
-- Ensure you're in "Code" mode (not "Preview" mode)
-- Try reading individual files first to test functionality
+- **Google Gemini AI** for powerful security analysis capabilities
+- **Bolt.new** for the innovative development platform
+- **Chrome Extensions API** for seamless browser integration
 
-### Performance Issues
-- Large projects may take time to read all files
-- The extension includes automatic delays to prevent overwhelming the UI
-- Files are read sequentially to ensure reliability
+## 📞 Support
 
-## Contributing
+- **Issues**: [GitHub Issues](https://github.com/your-username/codeguardian-extension/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/codeguardian-extension/discussions)
+- **Email**: support@codeguardian.dev
 
-1. Fork the repository
-2. Make your changes
-3. Test thoroughly with different bolt.new projects
-4. Submit a pull request with detailed description
+---
 
-## License
-
-MIT License - see LICENSE file for details
+**CodeGuardian** - Your AI-powered security companion for safer code development.

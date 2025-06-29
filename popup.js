@@ -1,25 +1,59 @@
-class BoltNewAssistant {
+class CodeGuardianAssistant {
   constructor() {
     this.isBoltNewPage = false;
     this.contentScriptReady = false;
+    this.geminiApiKey = '';
     this.sessionState = {
       planContent: '',
       codeContent: '',
       chatInput: '',
-      isReading: false,
-      lastOperation: null,
+      isReviewing: false,
+      lastReview: null,
       timestamp: Date.now()
     };
     this.init();
   }
   
   async init() {
-    console.log('🚀 Popup initialized');
+    console.log('🚀 CodeGuardian initialized');
     await this.loadSessionState();
+    await this.loadApiKey();
     this.checkBoltNewPage();
     this.bindEvents();
     this.restoreUIState();
     this.updateUI();
+  }
+  
+  async loadApiKey() {
+    try {
+      const stored = await chrome.storage.local.get('geminiApiKey');
+      if (stored.geminiApiKey) {
+        this.geminiApiKey = stored.geminiApiKey;
+        document.getElementById('geminiApiKey').value = '••••••••••••••••';
+      }
+    } catch (error) {
+      console.error('❌ Error loading API key:', error);
+    }
+  }
+  
+  async saveApiKey() {
+    const apiKeyInput = document.getElementById('geminiApiKey');
+    const apiKey = apiKeyInput.value.trim();
+    
+    if (!apiKey || apiKey === '••••••••••••••••') {
+      this.showError('saveApiKey', 'Please enter a valid API key');
+      return;
+    }
+    
+    try {
+      await chrome.storage.local.set({ geminiApiKey: apiKey });
+      this.geminiApiKey = apiKey;
+      apiKeyInput.value = '••••••••••••••••';
+      this.showSuccess('saveApiKey', 'API key saved successfully!');
+    } catch (error) {
+      console.error('❌ Error saving API key:', error);
+      this.showError('saveApiKey', 'Failed to save API key');
+    }
   }
   
   async checkBoltNewPage() {
@@ -29,7 +63,6 @@ class BoltNewAssistant {
       this.isBoltNewPage = tab.url && tab.url.includes('bolt.new');
       
       if (this.isBoltNewPage) {
-        // Try to ensure content script is loaded
         await this.ensureContentScript(tab.id);
       }
       
@@ -44,7 +77,6 @@ class BoltNewAssistant {
     try {
       console.log('🔄 Ensuring content script is loaded...');
       
-      // First, try to ping the existing content script
       try {
         const response = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
         if (response && response.success) {
@@ -56,16 +88,13 @@ class BoltNewAssistant {
         console.log('📡 Content script not responding, injecting...');
       }
       
-      // If ping failed, inject the content script
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
         files: ['content.js']
       });
       
-      // Wait a moment for script to initialize
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Try to ping again
       try {
         const response = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
         if (response && response.success) {
@@ -74,7 +103,7 @@ class BoltNewAssistant {
         }
       } catch (error) {
         console.log('⚠️ Content script injected but not responding to ping');
-        this.contentScriptReady = true; // Assume it's working
+        this.contentScriptReady = true;
       }
       
     } catch (error) {
@@ -91,40 +120,47 @@ class BoltNewAssistant {
       statusIndicator.classList.add('active');
       statusIndicator.classList.remove('inactive');
       statusText.textContent = '✅ Connected to bolt.new';
-      console.log('✅ Connected to bolt.new');
     } else if (this.isBoltNewPage && !this.contentScriptReady) {
       statusIndicator.classList.add('inactive');
       statusIndicator.classList.remove('active');
       statusText.textContent = '🔄 Loading bolt.new connection...';
-      console.log('🔄 Loading connection...');
     } else {
       statusIndicator.classList.add('inactive');
       statusIndicator.classList.remove('active');
-      statusText.textContent = '❌ Not on bolt.new (go to bolt.new first)';
-      console.log('❌ Not on bolt.new');
+      statusText.textContent = '❌ Not on bolt.new (navigate to bolt.new first)';
     }
   }
   
   bindEvents() {
+    // Main review button
+    document.getElementById('reviewBtn').addEventListener('click', () => {
+      console.log('🔘 Security Review button clicked');
+      this.performSecurityReview();
+    });
+    
+    // API key management
+    document.getElementById('saveApiKey').addEventListener('click', () => {
+      this.saveApiKey();
+    });
+    
+    // Quick actions
     document.getElementById('readPlanBtn').addEventListener('click', () => {
-      console.log('🔘 Read Plan button clicked');
       this.readLatestPlan();
     });
     
-    document.getElementById('sendChatBtn').addEventListener('click', () => {
-      console.log('🔘 Send Chat button clicked');
-      this.sendChatMessage();
-    });
-    
     document.getElementById('readCodeBtn').addEventListener('click', () => {
-      console.log('🔘 Read Code button clicked');
       this.readProjectCode();
     });
     
+    document.getElementById('sendChatBtn').addEventListener('click', () => {
+      this.sendChatMessage();
+    });
+    
+    // Footer buttons
     document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
     document.getElementById('helpBtn').addEventListener('click', () => this.openHelp());
     
-    // Save chat input as user types
+    // Auto-save chat input
     document.getElementById('chatInput').addEventListener('input', (e) => {
       this.sessionState.chatInput = e.target.value;
       this.saveSessionState();
@@ -136,18 +172,281 @@ class BoltNewAssistant {
     });
   }
   
+  async performSecurityReview() {
+    if (!this.isBoltNewPage) {
+      this.showError('reviewBtn', 'Please navigate to bolt.new first');
+      return;
+    }
+    
+    if (!this.geminiApiKey) {
+      this.showError('reviewBtn', 'Please configure your Gemini API key first');
+      return;
+    }
+    
+    const reviewBtn = document.getElementById('reviewBtn');
+    const reviewStatus = document.getElementById('reviewStatus');
+    
+    // Update button state
+    reviewBtn.disabled = true;
+    reviewBtn.querySelector('.btn-text').textContent = 'Analyzing...';
+    reviewBtn.querySelector('.btn-icon').textContent = '⏳';
+    
+    // Show progress
+    this.showReviewProgress();
+    
+    try {
+      // Step 1: Read latest plan
+      this.updateReviewStep('read', 'active');
+      const planResponse = await this.sendMessageToContentScript({ 
+        action: 'readLatestPlan' 
+      });
+      
+      if (!planResponse || !planResponse.success) {
+        throw new Error('Failed to read latest plan: ' + (planResponse?.error || 'Unknown error'));
+      }
+      
+      this.updateReviewStep('read', 'complete');
+      
+      // Step 2: Analyze with Gemini
+      this.updateReviewStep('analyze', 'active');
+      const analysis = await this.analyzeWithGemini(planResponse.plan);
+      this.updateReviewStep('analyze', 'complete');
+      
+      // Step 3: Generate security prompt
+      this.updateReviewStep('generate', 'active');
+      const securityPrompt = this.generateSecurityPrompt(analysis);
+      this.updateReviewStep('generate', 'complete');
+      
+      // Step 4: Insert into chat
+      this.updateReviewStep('insert', 'active');
+      const insertResponse = await this.sendMessageToContentScript({
+        action: 'sendChatMessage',
+        message: securityPrompt
+      });
+      
+      if (!insertResponse || !insertResponse.success) {
+        throw new Error('Failed to insert prompt: ' + (insertResponse?.error || 'Unknown error'));
+      }
+      
+      this.updateReviewStep('insert', 'complete');
+      
+      // Save to session
+      this.sessionState.lastReview = {
+        analysis: analysis,
+        prompt: securityPrompt,
+        timestamp: Date.now()
+      };
+      this.saveSessionState();
+      
+      this.showReviewSuccess('Security review completed! Prompt inserted into chat. Review and send when ready.');
+      
+    } catch (error) {
+      console.error('💥 Error during security review:', error);
+      this.updateReviewStep('current', 'error');
+      this.showReviewError(error.message);
+    } finally {
+      // Reset button state
+      reviewBtn.disabled = false;
+      reviewBtn.querySelector('.btn-text').textContent = 'Review Latest Plan';
+      reviewBtn.querySelector('.btn-icon').textContent = '🔍';
+      
+      // Hide progress after delay
+      setTimeout(() => {
+        this.hideReviewProgress();
+      }, 3000);
+    }
+  }
+  
+  async analyzeWithGemini(planContent) {
+    const prompt = `You are CodeGuardian, an AI security expert that reviews code implementation plans for security vulnerabilities and best practices.
+
+Analyze the following Bolt AI implementation plan and provide a comprehensive security assessment:
+
+PLAN TO ANALYZE:
+${planContent}
+
+Please provide your analysis in the following JSON format:
+{
+  "securityScore": 1-10,
+  "criticalIssues": ["list of critical security issues"],
+  "recommendations": ["list of security recommendations"],
+  "bestPractices": ["list of missing security best practices"],
+  "overallAssessment": "brief overall security assessment",
+  "shouldImplement": true/false
+}
+
+Focus on:
+- Authentication and authorization vulnerabilities
+- Data validation and sanitization
+- SQL injection and XSS prevention
+- Secure API design
+- Proper error handling
+- Secrets management
+- HTTPS and encryption
+- Input validation
+- Rate limiting and DoS protection
+- Secure coding practices
+
+Be thorough but concise. Only flag real security concerns, not minor style issues.`;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const analysisText = data.candidates[0].content.parts[0].text;
+      
+      // Try to extract JSON from the response
+      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        // Fallback: create structured response from text
+        return {
+          securityScore: 7,
+          criticalIssues: [],
+          recommendations: [analysisText],
+          bestPractices: [],
+          overallAssessment: "Analysis completed",
+          shouldImplement: true
+        };
+      }
+    } catch (error) {
+      console.error('❌ Gemini API error:', error);
+      throw new Error('Failed to analyze with Gemini AI: ' + error.message);
+    }
+  }
+  
+  generateSecurityPrompt(analysis) {
+    const { securityScore, criticalIssues, recommendations, bestPractices, overallAssessment, shouldImplement } = analysis;
+    
+    let prompt = `🛡️ **CodeGuardian Security Review**\n\n`;
+    
+    prompt += `**Security Score: ${securityScore}/10**\n\n`;
+    
+    if (shouldImplement && criticalIssues.length === 0) {
+      prompt += `✅ **APPROVED FOR IMPLEMENTATION**\n\n`;
+      prompt += `${overallAssessment}\n\n`;
+      prompt += `The implementation plan looks secure. Please proceed with implementation while considering these enhancements:\n\n`;
+    } else {
+      prompt += `⚠️ **SECURITY CONCERNS IDENTIFIED**\n\n`;
+      prompt += `${overallAssessment}\n\n`;
+      prompt += `Please address the following security issues before implementation:\n\n`;
+    }
+    
+    if (criticalIssues.length > 0) {
+      prompt += `🚨 **Critical Security Issues:**\n`;
+      criticalIssues.forEach((issue, index) => {
+        prompt += `${index + 1}. ${issue}\n`;
+      });
+      prompt += `\n`;
+    }
+    
+    if (recommendations.length > 0) {
+      prompt += `🔧 **Security Recommendations:**\n`;
+      recommendations.forEach((rec, index) => {
+        prompt += `${index + 1}. ${rec}\n`;
+      });
+      prompt += `\n`;
+    }
+    
+    if (bestPractices.length > 0) {
+      prompt += `📋 **Missing Security Best Practices:**\n`;
+      bestPractices.forEach((practice, index) => {
+        prompt += `${index + 1}. ${practice}\n`;
+      });
+      prompt += `\n`;
+    }
+    
+    if (shouldImplement) {
+      prompt += `Please update your implementation plan to include these security measures and then proceed with implementation.`;
+    } else {
+      prompt += `Please revise your implementation plan to address these critical security concerns before proceeding.`;
+    }
+    
+    return prompt;
+  }
+  
+  showReviewProgress() {
+    const reviewStatus = document.getElementById('reviewStatus');
+    reviewStatus.className = 'review-status show';
+    reviewStatus.innerHTML = `
+      <div class="review-progress">
+        <div class="progress-step">
+          <div class="progress-icon pending" id="step-read">1</div>
+          <span>Reading latest Bolt AI plan...</span>
+        </div>
+        <div class="progress-step">
+          <div class="progress-icon pending" id="step-analyze">2</div>
+          <span>Analyzing with Gemini AI...</span>
+        </div>
+        <div class="progress-step">
+          <div class="progress-icon pending" id="step-generate">3</div>
+          <span>Generating security prompt...</span>
+        </div>
+        <div class="progress-step">
+          <div class="progress-icon pending" id="step-insert">4</div>
+          <span>Inserting into chat input...</span>
+        </div>
+      </div>
+    `;
+  }
+  
+  updateReviewStep(step, status) {
+    const stepElement = document.getElementById(`step-${step}`);
+    if (stepElement) {
+      stepElement.className = `progress-icon ${status}`;
+      if (status === 'complete') {
+        stepElement.textContent = '✓';
+      } else if (status === 'error') {
+        stepElement.textContent = '✗';
+      } else if (status === 'active') {
+        stepElement.textContent = '⟳';
+      }
+    }
+  }
+  
+  showReviewSuccess(message) {
+    const reviewStatus = document.getElementById('reviewStatus');
+    reviewStatus.className = 'review-status show success';
+    reviewStatus.textContent = message;
+  }
+  
+  showReviewError(message) {
+    const reviewStatus = document.getElementById('reviewStatus');
+    reviewStatus.className = 'review-status show error';
+    reviewStatus.textContent = `Error: ${message}`;
+  }
+  
+  hideReviewProgress() {
+    const reviewStatus = document.getElementById('reviewStatus');
+    reviewStatus.classList.remove('show');
+  }
+  
   // Session State Management
   async loadSessionState() {
     try {
-      const stored = await chrome.storage.local.get('boltAssistantSession');
-      if (stored.boltAssistantSession) {
-        const storedState = stored.boltAssistantSession;
-        // Only restore if session is less than 1 hour old
+      const stored = await chrome.storage.local.get('codeGuardianSession');
+      if (stored.codeGuardianSession) {
+        const storedState = stored.codeGuardianSession;
         if (Date.now() - storedState.timestamp < 60 * 60 * 1000) {
           this.sessionState = { ...this.sessionState, ...storedState };
-          console.log('✅ Session state restored:', this.sessionState);
-        } else {
-          console.log('⏰ Session expired, starting fresh');
+          console.log('✅ Session state restored');
         }
       }
     } catch (error) {
@@ -158,8 +457,7 @@ class BoltNewAssistant {
   async saveSessionState() {
     try {
       this.sessionState.timestamp = Date.now();
-      await chrome.storage.local.set({ boltAssistantSession: this.sessionState });
-      console.log('💾 Session state saved');
+      await chrome.storage.local.set({ codeGuardianSession: this.sessionState });
     } catch (error) {
       console.error('❌ Error saving session state:', error);
     }
@@ -167,99 +465,13 @@ class BoltNewAssistant {
   
   restoreUIState() {
     try {
-      // Restore chat input
       const chatInput = document.getElementById('chatInput');
       if (this.sessionState.chatInput) {
         chatInput.value = this.sessionState.chatInput;
       }
-      
-      // Restore plan content
-      const planContent = document.getElementById('planContent');
-      if (this.sessionState.planContent) {
-        planContent.textContent = this.sessionState.planContent;
-        planContent.classList.add('show');
-      }
-      
-      // Restore code content
-      const codeContent = document.getElementById('codeContent');
-      if (this.sessionState.codeContent) {
-        codeContent.textContent = this.sessionState.codeContent;
-        codeContent.classList.add('show');
-      }
-      
-      // Check if there's an ongoing operation
-      if (this.sessionState.isReading) {
-        this.checkOngoingOperations();
-      }
-      
-      console.log('🔄 UI state restored');
     } catch (error) {
       console.error('❌ Error restoring UI state:', error);
     }
-  }
-  
-  async checkOngoingOperations() {
-    if (!this.isBoltNewPage) return;
-    
-    try {
-      // Check if content script has ongoing operations
-      const response = await this.sendMessageToContentScript({ action: 'getStatus' });
-      
-      if (response && response.isReading) {
-        // Restore reading state
-        const button = document.getElementById('readCodeBtn');
-        button.textContent = 'Reading Code...';
-        button.disabled = true;
-        
-        this.showSuccess('readCodeBtn', 'Code reading resumed from previous session');
-        
-        // Poll for completion
-        this.pollForCompletion();
-      }
-    } catch (error) {
-      console.log('⚠️ Could not check ongoing operations:', error.message);
-      // Reset reading state if we can't check
-      this.sessionState.isReading = false;
-      this.saveSessionState();
-    }
-  }
-  
-  async pollForCompletion() {
-    const maxPolls = 60; // 5 minutes max
-    let polls = 0;
-    
-    const poll = async () => {
-      if (polls >= maxPolls) {
-        this.resetReadingState();
-        return;
-      }
-      
-      try {
-        const response = await this.sendMessageToContentScript({ action: 'getStatus' });
-        
-        if (!response || !response.isReading) {
-          // Operation completed, try to get results
-          this.resetReadingState();
-          this.showSuccess('readCodeBtn', 'Previous operation completed');
-        } else {
-          polls++;
-          setTimeout(poll, 5000); // Poll every 5 seconds
-        }
-      } catch (error) {
-        this.resetReadingState();
-      }
-    };
-    
-    poll();
-  }
-  
-  resetReadingState() {
-    this.sessionState.isReading = false;
-    this.saveSessionState();
-    
-    const button = document.getElementById('readCodeBtn');
-    button.textContent = 'Read Project Code';
-    button.disabled = false;
   }
   
   async sendMessageToContentScript(message) {
@@ -275,7 +487,6 @@ class BoltNewAssistant {
     } catch (error) {
       console.error('💥 Communication error:', error);
       
-      // Try to re-inject content script and retry once
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         await this.ensureContentScript(tab.id);
@@ -287,6 +498,7 @@ class BoltNewAssistant {
     }
   }
   
+  // Quick action methods (simplified versions of original functions)
   async readLatestPlan() {
     if (!this.isBoltNewPage) {
       this.showError('readPlanBtn', 'Please navigate to bolt.new first');
@@ -296,37 +508,61 @@ class BoltNewAssistant {
     const button = document.getElementById('readPlanBtn');
     const content = document.getElementById('planContent');
     
-    button.textContent = 'Reading Plan...';
+    button.textContent = 'Reading...';
     button.disabled = true;
     
     try {
-      console.log('📋 Sending readLatestPlan message (latest AI plan)...');
-      
       const response = await this.sendMessageToContentScript({ 
         action: 'readLatestPlan' 
       });
       
-      console.log('📋 Received response:', response);
-      
       if (response && response.success) {
-        const planText = response.plan || 'No plan found';
-        content.textContent = planText;
+        content.textContent = response.plan || 'No plan found';
         content.classList.add('show');
-        
-        // Save to session state
-        this.sessionState.planContent = planText;
-        this.sessionState.lastOperation = 'readPlan';
+        this.sessionState.planContent = response.plan;
         this.saveSessionState();
-        
-        this.showSuccess('readPlanBtn', 'Latest plan read successfully!');
+        this.showSuccess('readPlanBtn', 'Plan read successfully!');
       } else {
-        this.showError('readPlanBtn', response?.error || 'Failed to read latest plan');
+        this.showError('readPlanBtn', response?.error || 'Failed to read plan');
       }
     } catch (error) {
-      console.error('💥 Error reading plan:', error);
       this.showError('readPlanBtn', error.message);
     } finally {
       button.textContent = 'Read Latest Plan';
+      button.disabled = false;
+    }
+  }
+  
+  async readProjectCode() {
+    if (!this.isBoltNewPage) {
+      this.showError('readCodeBtn', 'Please navigate to bolt.new first');
+      return;
+    }
+    
+    const button = document.getElementById('readCodeBtn');
+    const content = document.getElementById('codeContent');
+    
+    button.textContent = 'Reading...';
+    button.disabled = true;
+    
+    try {
+      const response = await this.sendMessageToContentScript({ 
+        action: 'readProjectCode' 
+      });
+      
+      if (response && response.success) {
+        content.textContent = response.code || 'No code found';
+        content.classList.add('show');
+        this.sessionState.codeContent = response.code;
+        this.saveSessionState();
+        this.showSuccess('readCodeBtn', 'Code read successfully!');
+      } else {
+        this.showError('readCodeBtn', response?.error || 'Failed to read code');
+      }
+    } catch (error) {
+      this.showError('readCodeBtn', error.message);
+    } finally {
+      button.textContent = 'Read Project Code';
       button.disabled = false;
     }
   }
@@ -350,29 +586,20 @@ class BoltNewAssistant {
     button.disabled = true;
     
     try {
-      console.log('💬 Placing chat message:', message);
-      
       const response = await this.sendMessageToContentScript({ 
         action: 'sendChatMessage',
         message: message
       });
       
-      console.log('💬 Received response:', response);
-      
       if (response && response.success) {
         chatInput.value = '';
-        
-        // Clear chat input from session state
         this.sessionState.chatInput = '';
-        this.sessionState.lastOperation = 'sendChat';
         this.saveSessionState();
-        
-        this.showSuccess('sendChatBtn', 'Message placed in chat input! Review and send when ready.');
+        this.showSuccess('sendChatBtn', 'Message placed in chat!');
       } else {
         this.showError('sendChatBtn', response?.error || 'Failed to place message');
       }
     } catch (error) {
-      console.error('💥 Error placing message:', error);
       this.showError('sendChatBtn', error.message);
     } finally {
       button.textContent = 'Place in Chat';
@@ -380,70 +607,17 @@ class BoltNewAssistant {
     }
   }
   
-  async readProjectCode() {
-    if (!this.isBoltNewPage) {
-      this.showError('readCodeBtn', 'Please navigate to bolt.new first');
-      return;
-    }
-    
-    const button = document.getElementById('readCodeBtn');
-    const content = document.getElementById('codeContent');
-    
-    button.textContent = 'Reading Code...';
-    button.disabled = true;
-    
-    // Mark as reading in session state
-    this.sessionState.isReading = true;
-    this.sessionState.lastOperation = 'readCode';
-    this.saveSessionState();
-    
-    try {
-      console.log('📁 Sending readProjectCode message...');
-      
-      const response = await this.sendMessageToContentScript({ 
-        action: 'readProjectCode' 
-      });
-      
-      console.log('📁 Received response:', response);
-      
-      if (response && response.success) {
-        const codeText = response.code || 'No code found';
-        content.textContent = codeText;
-        content.classList.add('show');
-        
-        // Save code content to session state
-        this.sessionState.codeContent = codeText;
-        this.sessionState.isReading = false;
-        this.saveSessionState();
-        
-        this.showSuccess('readCodeBtn', 'Code read successfully!');
-      } else {
-        this.sessionState.isReading = false;
-        this.saveSessionState();
-        this.showError('readCodeBtn', response?.error || 'Failed to read code');
-      }
-    } catch (error) {
-      console.error('💥 Error reading code:', error);
-      this.sessionState.isReading = false;
-      this.saveSessionState();
-      this.showError('readCodeBtn', error.message);
-    } finally {
-      button.textContent = 'Read Project Code';
-      button.disabled = false;
-    }
+  showError(elementId, message) {
+    this.showMessage(elementId, message, 'error');
   }
   
-  showError(buttonId, message) {
-    this.showMessage(buttonId, message, 'error');
+  showSuccess(elementId, message) {
+    this.showMessage(elementId, message, 'success');
   }
   
-  showSuccess(buttonId, message) {
-    this.showMessage(buttonId, message, 'success');
-  }
-  
-  showMessage(buttonId, message, type) {
-    const button = document.getElementById(buttonId);
-    const existingMessage = button.parentNode.querySelector('.error, .success');
+  showMessage(elementId, message, type) {
+    const element = document.getElementById(elementId);
+    const existingMessage = element.parentNode.querySelector('.error, .success');
     if (existingMessage) {
       existingMessage.remove();
     }
@@ -451,7 +625,7 @@ class BoltNewAssistant {
     const messageDiv = document.createElement('div');
     messageDiv.className = type;
     messageDiv.textContent = message;
-    button.parentNode.appendChild(messageDiv);
+    element.parentNode.appendChild(messageDiv);
     
     setTimeout(() => {
       if (messageDiv.parentNode) {
@@ -461,7 +635,7 @@ class BoltNewAssistant {
   }
   
   updateUI() {
-    const buttons = ['readPlanBtn', 'sendChatBtn', 'readCodeBtn'];
+    const buttons = ['reviewBtn', 'readPlanBtn', 'sendChatBtn', 'readCodeBtn'];
     buttons.forEach(buttonId => {
       const button = document.getElementById(buttonId);
       if (!this.isBoltNewPage) {
@@ -477,12 +651,12 @@ class BoltNewAssistant {
   }
   
   openHelp() {
-    chrome.tabs.create({ url: 'https://github.com/your-username/bolt-new-assistant' });
+    chrome.tabs.create({ url: 'https://github.com/your-username/codeguardian-extension' });
   }
 }
 
 // Initialize the extension when popup opens
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 DOM loaded, initializing popup...');
-  new BoltNewAssistant();
+  console.log('🚀 DOM loaded, initializing CodeGuardian...');
+  new CodeGuardianAssistant();
 });

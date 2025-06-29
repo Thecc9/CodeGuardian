@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bolt.new Assistant</title>
+  <title>CodeGuardian - Security Assistant</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,10 +11,11 @@
     <div class="header">
       <div class="logo">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          <path d="M12 1l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/>
         </svg>
-        <h1>Bolt.new Assistant</h1>
+        <h1>CodeGuardian</h1>
       </div>
+      <p class="subtitle">AI-Powered Security Review</p>
     </div>
     
     <div class="content">
@@ -23,25 +24,44 @@
         <span class="status-text" id="statusText">Checking bolt.new...</span>
       </div>
       
-      <!-- Latest AI Plan Section -->
+      <!-- Security Review Section -->
+      <div class="section primary">
+        <h3>🛡️ Security Review</h3>
+        <p class="section-description">Analyze Bolt AI's latest response for security vulnerabilities and best practices</p>
+        <button id="reviewBtn" class="action-btn primary">
+          <span class="btn-icon">🔍</span>
+          <span class="btn-text">Review Latest Plan</span>
+        </button>
+        <div id="reviewStatus" class="review-status"></div>
+      </div>
+      
+      <!-- Configuration Section -->
       <div class="section">
-        <h3>📋 Latest AI Plan</h3>
-        <button id="readPlanBtn" class="action-btn green">Read Latest Plan</button>
+        <h3>⚙️ Configuration</h3>
+        <div class="config-item">
+          <label for="geminiApiKey">Gemini API Key:</label>
+          <div class="input-group">
+            <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key..." />
+            <button id="saveApiKey" class="save-btn">Save</button>
+          </div>
+          <small class="help-text">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+        </div>
+      </div>
+      
+      <!-- Quick Actions Section -->
+      <div class="section">
+        <h3>🚀 Quick Actions</h3>
+        <button id="readPlanBtn" class="action-btn secondary">Read Latest Plan</button>
+        <button id="readCodeBtn" class="action-btn secondary">Read Project Code</button>
         <div id="planContent" class="content-display"></div>
+        <div id="codeContent" class="content-display"></div>
       </div>
       
       <!-- Chat Input Section -->
       <div class="section">
-        <h3>💬 Chat Input</h3>
-        <textarea id="chatInput" placeholder="Enter message to place in bolt.new chat input..." rows="3"></textarea>
-        <button id="sendChatBtn" class="action-btn blue">Place in Chat</button>
-      </div>
-      
-      <!-- Code Reader Section -->
-      <div class="section">
-        <h3>📁 Code Reader</h3>
-        <button id="readCodeBtn" class="action-btn red">Read Project Code</button>
-        <div id="codeContent" class="content-display"></div>
+        <h3>💬 Manual Input</h3>
+        <textarea id="chatInput" placeholder="Enter custom message for bolt.new..." rows="3"></textarea>
+        <button id="sendChatBtn" class="action-btn secondary">Place in Chat</button>
       </div>
     </div>
     

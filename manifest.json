@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Bolt.new Assistant",
+  "name": "CodeGuardian - Bolt.new Security Assistant",
   "version": "1.0.0",
-  "description": "Chrome extension for bolt.new - read plans, input chat, and read code",
+  "description": "AI-powered security review system for bolt.new projects",
   "permissions": [
     "activeTab",
     "storage",
@@ -10,11 +10,12 @@
   ],
   "host_permissions": [
     "https://bolt.new/*",
-    "https://*.bolt.new/*"
+    "https://*.bolt.new/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Bolt.new Assistant"
+    "default_title": "CodeGuardian - Security Assistant"
   },
   "background": {
     "service_worker": "background.js"
