@@ -2,13 +2,23 @@ class BoltNewAssistant {
   constructor() {
     this.isBoltNewPage = false;
     this.contentScriptReady = false;
+    this.sessionState = {
+      planContent: '',
+      codeContent: '',
+      chatInput: '',
+      isReading: false,
+      lastOperation: null,
+      timestamp: Date.now()
+    };
     this.init();
   }
   
-  init() {
+  async init() {
     console.log('🚀 Popup initialized');
+    await this.loadSessionState();
     this.checkBoltNewPage();
     this.bindEvents();
+    this.restoreUIState();
     this.updateUI();
   }
   
@@ -113,6 +123,143 @@ class BoltNewAssistant {
     
     document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
     document.getElementById('helpBtn').addEventListener('click', () => this.openHelp());
+    
+    // Save chat input as user types
+    document.getElementById('chatInput').addEventListener('input', (e) => {
+      this.sessionState.chatInput = e.target.value;
+      this.saveSessionState();
+    });
+    
+    // Save state before popup closes
+    window.addEventListener('beforeunload', () => {
+      this.saveSessionState();
+    });
+  }
+  
+  // Session State Management
+  async loadSessionState() {
+    try {
+      const stored = await chrome.storage.local.get('boltAssistantSession');
+      if (stored.boltAssistantSession) {
+        const storedState = stored.boltAssistantSession;
+        // Only restore if session is less than 1 hour old
+        if (Date.now() - storedState.timestamp < 60 * 60 * 1000) {
+          this.sessionState = { ...this.sessionState, ...storedState };
+          console.log('✅ Session state restored:', this.sessionState);
+        } else {
+          console.log('⏰ Session expired, starting fresh');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error loading session state:', error);
+    }
+  }
+  
+  async saveSessionState() {
+    try {
+      this.sessionState.timestamp = Date.now();
+      await chrome.storage.local.set({ boltAssistantSession: this.sessionState });
+      console.log('💾 Session state saved');
+    } catch (error) {
+      console.error('❌ Error saving session state:', error);
+    }
+  }
+  
+  restoreUIState() {
+    try {
+      // Restore chat input
+      const chatInput = document.getElementById('chatInput');
+      if (this.sessionState.chatInput) {
+        chatInput.value = this.sessionState.chatInput;
+      }
+      
+      // Restore plan content
+      const planContent = document.getElementById('planContent');
+      if (this.sessionState.planContent) {
+        planContent.textContent = this.sessionState.planContent;
+        planContent.classList.add('show');
+      }
+      
+      // Restore code content
+      const codeContent = document.getElementById('codeContent');
+      if (this.sessionState.codeContent) {
+        codeContent.textContent = this.sessionState.codeContent;
+        codeContent.classList.add('show');
+      }
+      
+      // Check if there's an ongoing operation
+      if (this.sessionState.isReading) {
+        this.checkOngoingOperations();
+      }
+      
+      console.log('🔄 UI state restored');
+    } catch (error) {
+      console.error('❌ Error restoring UI state:', error);
+    }
+  }
+  
+  async checkOngoingOperations() {
+    if (!this.isBoltNewPage) return;
+    
+    try {
+      // Check if content script has ongoing operations
+      const response = await this.sendMessageToContentScript({ action: 'getStatus' });
+      
+      if (response && response.isReading) {
+        // Restore reading state
+        const button = document.getElementById('readCodeBtn');
+        button.textContent = 'Reading Code...';
+        button.disabled = true;
+        
+        this.showSuccess('readCodeBtn', 'Code reading resumed from previous session');
+        
+        // Poll for completion
+        this.pollForCompletion();
+      }
+    } catch (error) {
+      console.log('⚠️ Could not check ongoing operations:', error.message);
+      // Reset reading state if we can't check
+      this.sessionState.isReading = false;
+      this.saveSessionState();
+    }
+  }
+  
+  async pollForCompletion() {
+    const maxPolls = 60; // 5 minutes max
+    let polls = 0;
+    
+    const poll = async () => {
+      if (polls >= maxPolls) {
+        this.resetReadingState();
+        return;
+      }
+      
+      try {
+        const response = await this.sendMessageToContentScript({ action: 'getStatus' });
+        
+        if (!response || !response.isReading) {
+          // Operation completed, try to get results
+          this.resetReadingState();
+          this.showSuccess('readCodeBtn', 'Previous operation completed');
+        } else {
+          polls++;
+          setTimeout(poll, 5000); // Poll every 5 seconds
+        }
+      } catch (error) {
+        this.resetReadingState();
+      }
+    };
+    
+    poll();
+  }
+  
+  resetReadingState() {
+    this.sessionState.isReading = false;
+    this.saveSessionState();
+    
+    const button = document.getElementById('readCodeBtn');
+    button.textContent = 'Read Project Code';
+    button.disabled = false;
   }
   
   async sendMessageToContentScript(message) {
@@ -162,8 +309,15 @@ class BoltNewAssistant {
       console.log('📋 Received response:', response);
       
       if (response && response.success) {
-        content.textContent = response.plan || 'No plan found';
+        const planText = response.plan || 'No plan found';
+        content.textContent = planText;
         content.classList.add('show');
+        
+        // Save to session state
+        this.sessionState.planContent = planText;
+        this.sessionState.lastOperation = 'readPlan';
+        this.saveSessionState();
+        
         this.showSuccess('readPlanBtn', 'Plan read successfully!');
       } else {
         this.showError('readPlanBtn', response?.error || 'Failed to read plan');
@@ -192,11 +346,11 @@ class BoltNewAssistant {
     }
     
     const button = document.getElementById('sendChatBtn');
-    button.textContent = 'Sending...';
+    button.textContent = 'Placing...';
     button.disabled = true;
     
     try {
-      console.log('💬 Sending chat message:', message);
+      console.log('💬 Placing chat message:', message);
       
       const response = await this.sendMessageToContentScript({ 
         action: 'sendChatMessage',
@@ -207,15 +361,21 @@ class BoltNewAssistant {
       
       if (response && response.success) {
         chatInput.value = '';
-        this.showSuccess('sendChatBtn', 'Message sent successfully!');
+        
+        // Clear chat input from session state
+        this.sessionState.chatInput = '';
+        this.sessionState.lastOperation = 'sendChat';
+        this.saveSessionState();
+        
+        this.showSuccess('sendChatBtn', 'Message placed in chat input! Review and send when ready.');
       } else {
-        this.showError('sendChatBtn', response?.error || 'Failed to send message');
+        this.showError('sendChatBtn', response?.error || 'Failed to place message');
       }
     } catch (error) {
-      console.error('💥 Error sending message:', error);
+      console.error('💥 Error placing message:', error);
       this.showError('sendChatBtn', error.message);
     } finally {
-      button.textContent = 'Send to Chat';
+      button.textContent = 'Place in Chat';
       button.disabled = false;
     }
   }
@@ -232,6 +392,11 @@ class BoltNewAssistant {
     button.textContent = 'Reading Code...';
     button.disabled = true;
     
+    // Mark as reading in session state
+    this.sessionState.isReading = true;
+    this.sessionState.lastOperation = 'readCode';
+    this.saveSessionState();
+    
     try {
       console.log('📁 Sending readProjectCode message...');
       
@@ -242,14 +407,25 @@ class BoltNewAssistant {
       console.log('📁 Received response:', response);
       
       if (response && response.success) {
-        content.textContent = response.code || 'No code found';
+        const codeText = response.code || 'No code found';
+        content.textContent = codeText;
         content.classList.add('show');
+        
+        // Save code content to session state
+        this.sessionState.codeContent = codeText;
+        this.sessionState.isReading = false;
+        this.saveSessionState();
+        
         this.showSuccess('readCodeBtn', 'Code read successfully!');
       } else {
+        this.sessionState.isReading = false;
+        this.saveSessionState();
         this.showError('readCodeBtn', response?.error || 'Failed to read code');
       }
     } catch (error) {
       console.error('💥 Error reading code:', error);
+      this.sessionState.isReading = false;
+      this.saveSessionState();
       this.showError('readCodeBtn', error.message);
     } finally {
       button.textContent = 'Read Project Code';

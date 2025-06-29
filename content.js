@@ -66,6 +66,13 @@ class BoltNewAssistant {
         case 'ping':
           sendResponse({ success: true, message: 'Content script is ready' });
           break;
+        case 'getStatus':
+          sendResponse({ 
+            success: true, 
+            isReading: this.isReading || false,
+            currentOperation: this.currentOperation || null
+          });
+          break;
         case 'readLatestPlan':
           await this.readLatestPlan(sendResponse);
           break;
@@ -217,48 +224,21 @@ class BoltNewAssistant {
       chatInput.dispatchEvent(inputEvent);
       chatInput.dispatchEvent(changeEvent);
       
-      console.log('✅ Message set in textarea');
+      console.log('✅ Message placed in chat input field');
       
       // Wait a moment for UI to update
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Look for send button - likely near the textarea
-      const sendButtonSelectors = [
-        'button[type="submit"]',
-        'button[class*="send"]',
-        'button[class*="submit"]',
-        'button[aria-label*="send"]',
-        'button[title*="send"]',
-        'button svg',
-        'button[class*="bolt"]'
-      ];
+      // Keep the input focused so user can review and send manually
+      chatInput.focus();
       
-      let sendButton = null;
+      // Position cursor at the end of the text
+      chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
       
-      // First, try to find button near the textarea
-      const textareaParent = chatInput.closest('div');
-      if (textareaParent) {
-        const nearbyButtons = textareaParent.querySelectorAll('button');
-        for (const button of nearbyButtons) {
-          if (!button.disabled && button.offsetParent !== null) {
-            sendButton = button;
-            console.log('✅ Found nearby send button');
-            break;
-          }
-        }
-      }
-      
-      if (sendButton) {
-        sendButton.click();
-        console.log('✅ Clicked send button');
-        sendResponse({ success: true });
-      } else {
-        console.log('⚠️ No send button found, message is in chat field');
-        sendResponse({ 
-          success: true, 
-          message: 'Message placed in chat field. You may need to press Enter or click send manually.' 
-        });
-      }
+      sendResponse({ 
+        success: true, 
+        message: 'Message placed in chat input field. Review and press Enter or click send when ready.' 
+      });
       
     } catch (error) {
       console.error('💥 Error sending message:', error);
@@ -610,6 +590,10 @@ class BoltNewAssistant {
   async readProjectCode(sendResponse) {
     console.log('📁 Starting comprehensive file reading...');
     
+    // Set reading state
+    this.isReading = true;
+    this.currentOperation = 'readProjectCode';
+    
     try {
       // Ensure we're in code mode
       await this.switchToCodeMode();
@@ -718,6 +702,10 @@ class BoltNewAssistant {
           result = result.substring(0, maxLength) + `\n\n...(truncated - showing first ${maxLength} characters)\n\nTotal files: ${fileContents.size}`;
         }
         
+        // Clear reading state on success
+        this.isReading = false;
+        this.currentOperation = null;
+        
         sendResponse({
           success: true,
           code: result,
@@ -725,6 +713,10 @@ class BoltNewAssistant {
           totalFiles: fileElements.length
         });
       } else {
+        // Clear reading state on failure
+        this.isReading = false;
+        this.currentOperation = null;
+        
         sendResponse({
           success: false,
           error: `Failed to read any files.\n\nErrors encountered:\n${errors.join('\n')}\n\nTotal files attempted: ${fileElements.length}`
@@ -734,6 +726,11 @@ class BoltNewAssistant {
     } catch (error) {
       console.error('💥 Critical error in readProjectCode:', error);
       this.hideProgress();
+      
+      // Clear reading state on error
+      this.isReading = false;
+      this.currentOperation = null;
+      
       sendResponse({ 
         success: false, 
         error: `Critical error: ${error.message}` 
