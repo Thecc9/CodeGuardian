@@ -98,135 +98,98 @@ class BoltNewAssistant {
   }
   
   async readLatestPlan(sendResponse) {
-    console.log('📋 Attempting to read last AI message...');
+    console.log('📋 Attempting to read latest AI message...');
     
     try {
       let lastAIMessage = '';
       
-      // Find the main chat container
-      const chatContainerSelectors = [
-        '[class*="chat"]',
-        '[class*="conversation"]', 
-        '[class*="messages"]',
-        '[class*="thread"]',
-        'main',
-        '[data-message-id]', // Look for elements with message IDs
-        '[class*="overflow-y-auto"]'
-      ];
-      
-      let foundLastMessage = false;
-      
-      for (const containerSelector of chatContainerSelectors) {
-        const container = document.querySelector(containerSelector);
-        if (!container) continue;
-        
-        console.log(`🔍 Checking container: ${containerSelector}`);
-        
-        // Get ALL potential message elements in DOM order (chronological)
-        const allElements = Array.from(container.querySelectorAll('div[data-message-id], div, article, section'))
-          .filter(el => {
-            const text = el.textContent?.trim();
-            return text && text.length > 50 && text.length < 10000;
-          });
-        
-        console.log(`📝 Found ${allElements.length} potential message elements`);
-        
-        const aiMessages = [];
-        
-        // Filter to find only AI messages, keeping their chronological order
-        allElements.forEach((element, index) => {
-          const text = element.textContent.trim();
-          
-          // Skip user messages
-          if (this.isUserMessage(element, text)) {
-            console.log(`⚠️ Skipping user message at index ${index}`);
-            return;
-          }
-          
-          // Skip UI elements
-          if (this.isUIElement(element, text)) {
-            console.log(`⚠️ Skipping UI element at index ${index}`);
-            return;
-          }
-          
-          // Check if this is an AI message
-          if (this.isAIMessage(element, text)) {
-            console.log(`✅ Found AI message at index ${index} (${text.substring(0, 100)}...)`);
-            aiMessages.push({
-              element: element,
-              text: text,
-              domPosition: index,
-              timestamp: Date.now() + index // Use index as relative timestamp
-            });
-          }
+      // Find the chat section specifically
+      const chatSection = document.querySelector('section[aria-label="Chat"]');
+      if (!chatSection) {
+        console.log('❌ Chat section not found');
+        sendResponse({ 
+          success: false, 
+          error: 'Chat section not found. Make sure you\'re on a bolt.new conversation page.' 
         });
-        
-        if (aiMessages.length > 0) {
-          // Sort by DOM position to get chronological order (highest index = most recent)
-          aiMessages.sort((a, b) => b.domPosition - a.domPosition);
-          
-          // Get the LAST (most recent) AI message
-          const lastMessage = aiMessages[0];
-          lastAIMessage = lastMessage.text;
-          
-          // Check if it contains a plan (for logging purposes)
-          const isPlan = this.isPlanMessage(lastMessage.element, lastMessage.text);
-          
-          console.log(`✅ Selected LAST AI message at position ${lastMessage.domPosition}`);
-          console.log(`📋 Contains plan: ${isPlan ? 'Yes' : 'No'}`);
-          
-          foundLastMessage = true;
-          break;
-        }
+        return;
       }
       
-      // Fallback strategy: Look for AI elements by specific selectors
-      if (!foundLastMessage) {
-        console.log('🔄 Trying fallback strategy with AI selectors...');
+      console.log('✅ Found chat section');
+      
+      // Get all message containers in the chat section
+      // Look for divs with data-message-id that contain AI responses (not user messages)
+      const allMessages = Array.from(chatSection.querySelectorAll('div[data-message-id]'));
+      console.log(`📝 Found ${allMessages.length} total messages`);
+      
+      // Filter to find AI messages (not user messages)
+      const aiMessages = [];
+      
+      allMessages.forEach((messageDiv, index) => {
+        // Check if this is a user message (has self-end class and specific background)
+        const isUserMessage = messageDiv.classList.contains('self-end') || 
+                             messageDiv.querySelector('.bg-bolt-elements-messages-background.self-end');
         
-        const aiSelectors = [
-          '[role="assistant"]',
-          '[class*="assistant"]',
-          '[data-role="assistant"]',
-          '.prose:not([class*="user"])',
-          '[class*="ai-"]:not([class*="user"])',
-          '[class*="bot-"]:not([class*="user"])'
-        ];
-        
-        const aiElements = [];
-        
-        for (const selector of aiSelectors) {
-          const elements = document.querySelectorAll(selector);
-          console.log(`🔍 Found ${elements.length} elements for selector: ${selector}`);
-          
-          elements.forEach(element => {
-            const text = element.textContent?.trim();
-            if (text && text.length > 50 && text.length < 10000 && 
-                !this.isUserMessage(element, text) && 
-                !this.isUIElement(element, text)) {
-              
-              aiElements.push({
-                element: element,
-                text: text,
-                selector: selector,
-                position: this.getElementPosition(element)
-              });
-            }
-          });
+        if (isUserMessage) {
+          console.log(`⚠️ Skipping user message at index ${index}`);
+          return;
         }
         
-        if (aiElements.length > 0) {
-          // Sort by DOM position (higher = more recent)
-          aiElements.sort((a, b) => b.position - a.position);
+        // Look for AI message content - should have the Bolt header and markdown content
+        const hasBoltHeader = messageDiv.querySelector('h3') && 
+                             messageDiv.querySelector('h3').textContent.trim() === 'Bolt';
+        
+        const hasMarkdownContent = messageDiv.querySelector('._MarkdownContent_19116_1');
+        
+        if (hasBoltHeader && hasMarkdownContent) {
+          const messageId = messageDiv.getAttribute('data-message-id');
+          const markdownContent = messageDiv.querySelector('._MarkdownContent_19116_1');
+          const textContent = markdownContent.textContent.trim();
           
-          const lastElement = aiElements[0];
-          lastAIMessage = lastElement.text;
+          if (textContent && textContent.length > 50) {
+            console.log(`✅ Found AI message: ${messageId} (${textContent.substring(0, 100)}...)`);
+            aiMessages.push({
+              element: messageDiv,
+              messageId: messageId,
+              text: textContent,
+              domPosition: index
+            });
+          }
+        }
+      });
+      
+      if (aiMessages.length > 0) {
+        // Get the last AI message (highest DOM position = most recent)
+        aiMessages.sort((a, b) => b.domPosition - a.domPosition);
+        const lastMessage = aiMessages[0];
+        lastAIMessage = lastMessage.text;
+        
+        console.log(`✅ Selected latest AI message: ${lastMessage.messageId}`);
+        console.log(`📋 Message length: ${lastAIMessage.length} characters`);
+      }
+      
+      // Fallback: if no AI messages found with the primary method, try alternative approach
+      if (!lastAIMessage) {
+        console.log('🔄 Trying fallback method...');
+        
+        // Look for any div with Bolt header that's not a user message
+        const boltMessages = Array.from(chatSection.querySelectorAll('div')).filter(div => {
+          const header = div.querySelector('h3');
+          const isNotUserMessage = !div.classList.contains('self-end');
+          const hasContent = div.querySelector('._MarkdownContent_19116_1');
           
-          const isPlan = this.isPlanMessage(lastElement.element, lastElement.text);
-          console.log(`✅ Found LAST AI message via fallback: ${lastElement.selector}`);
-          console.log(`📋 Contains plan: ${isPlan ? 'Yes' : 'No'}`);
-          
-          foundLastMessage = true;
+          return header && 
+                 header.textContent.trim() === 'Bolt' && 
+                 isNotUserMessage && 
+                 hasContent;
+        });
+        
+        if (boltMessages.length > 0) {
+          const lastBoltMessage = boltMessages[boltMessages.length - 1];
+          const content = lastBoltMessage.querySelector('._MarkdownContent_19116_1');
+          if (content) {
+            lastAIMessage = content.textContent.trim();
+            console.log('✅ Found AI message via fallback method');
+          }
         }
       }
       
@@ -239,7 +202,7 @@ class BoltNewAssistant {
           lastAIMessage = lastAIMessage.substring(0, 3000) + '...\n\n(truncated for display)';
         }
         
-        console.log('✅ Successfully found last AI message');
+        console.log('✅ Successfully found latest AI message');
         sendResponse({ 
           success: true, 
           plan: lastAIMessage
@@ -252,7 +215,7 @@ class BoltNewAssistant {
         });
       }
     } catch (error) {
-      console.error('💥 Error reading last AI message:', error);
+      console.error('💥 Error reading latest AI message:', error);
       sendResponse({ success: false, error: error.message });
     }
   }
