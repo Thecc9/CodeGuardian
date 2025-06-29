@@ -354,12 +354,29 @@ class CodeGuardianAssistant {
       });
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData, null, 2);
+        } catch (parseError) {
+          try {
+            errorDetails = await response.text();
+          } catch (textError) {
+            errorDetails = 'Unable to parse error response';
+          }
+        }
+        
+        console.error('🔍 Gemini API Error Details:', errorDetails);
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}\n\nDetails: ${errorDetails}`);
       }
 
       const data = await response.json();
-      const analysisText = data.candidates[0].content.parts[0].text;
       
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('Invalid response format from Gemini API');
+      }
+      
+      const analysisText = data.candidates[0].content.parts[0].text;
       return this.parseAnalysisResponse(analysisText);
     } catch (error) {
       console.error('❌ Gemini API error:', error);
@@ -379,7 +396,7 @@ class CodeGuardianAssistant {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-sonnet-20240229',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 2000,
           messages: [{
             role: 'user',
@@ -389,12 +406,29 @@ class CodeGuardianAssistant {
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData, null, 2);
+        } catch (parseError) {
+          try {
+            errorDetails = await response.text();
+          } catch (textError) {
+            errorDetails = 'Unable to parse error response';
+          }
+        }
+        
+        console.error('🔍 Claude API Error Details:', errorDetails);
+        throw new Error(`Claude API error: ${response.status} ${response.statusText}\n\nDetails: ${errorDetails}`);
       }
 
       const data = await response.json();
-      const analysisText = data.content[0].text;
       
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response format from Claude API');
+      }
+      
+      const analysisText = data.content[0].text;
       return this.parseAnalysisResponse(analysisText);
     } catch (error) {
       console.error('❌ Claude API error:', error);
@@ -413,7 +447,7 @@ class CodeGuardianAssistant {
           'Authorization': `Bearer ${this.apiKeys.openai}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [{
             role: 'user',
             content: prompt
@@ -423,12 +457,29 @@ class CodeGuardianAssistant {
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData, null, 2);
+        } catch (parseError) {
+          try {
+            errorDetails = await response.text();
+          } catch (textError) {
+            errorDetails = 'Unable to parse error response';
+          }
+        }
+        
+        console.error('🔍 OpenAI API Error Details:', errorDetails);
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}\n\nDetails: ${errorDetails}`);
       }
 
       const data = await response.json();
-      const analysisText = data.choices[0].message.content;
       
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from OpenAI API');
+      }
+      
+      const analysisText = data.choices[0].message.content;
       return this.parseAnalysisResponse(analysisText);
     } catch (error) {
       console.error('❌ OpenAI API error:', error);
@@ -457,12 +508,29 @@ class CodeGuardianAssistant {
       });
 
       if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = JSON.stringify(errorData, null, 2);
+        } catch (parseError) {
+          try {
+            errorDetails = await response.text();
+          } catch (textError) {
+            errorDetails = 'Unable to parse error response';
+          }
+        }
+        
+        console.error('🔍 DeepSeek API Error Details:', errorDetails);
+        throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}\n\nDetails: ${errorDetails}`);
       }
 
       const data = await response.json();
-      const analysisText = data.choices[0].message.content;
       
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from DeepSeek API');
+      }
+      
+      const analysisText = data.choices[0].message.content;
       return this.parseAnalysisResponse(analysisText);
     } catch (error) {
       console.error('❌ DeepSeek API error:', error);
