@@ -1,5 +1,10 @@
 // Bolt.new Assistant Content Script - Auto File Reader
 
+// Prevent multiple declarations if script is injected multiple times
+if (typeof window.BoltNewAssistant !== 'undefined') {
+  console.log('🔄 BoltNewAssistant already loaded, skipping redeclaration');
+} else {
+
 class BoltNewAssistant {
   constructor() {
     this.initialized = false;
@@ -800,8 +805,17 @@ class BoltNewAssistant {
   }
 }
 
-// Initialize content script
-const boltAssistant = new BoltNewAssistant();
+// Initialize content script (only if not already initialized)
+if (!window.boltAssistant) {
+  const boltAssistant = new BoltNewAssistant();
+  
+  // Make it available globally for debugging and to prevent re-initialization
+  window.boltAssistant = boltAssistant;
+  window.BoltNewAssistant = BoltNewAssistant;
+  
+  console.log('✅ BoltNewAssistant initialized and registered globally');
+} else {
+  console.log('🔄 BoltNewAssistant already initialized, using existing instance');
+}
 
-// Also make it available globally for debugging
-window.boltAssistant = boltAssistant;
+} // End of prevention block
