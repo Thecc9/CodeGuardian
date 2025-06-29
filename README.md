@@ -11,6 +11,13 @@ A Chrome extension that can read project files and their content from bolt.new, 
 - **Error Handling**: Detailed error reporting and graceful handling of edge cases
 - **Content Filtering**: Intelligent filtering to exclude binary files, shell commands, and non-code content
 
+### 💾 Session Persistence
+- **State Management**: Maintains extension state across popup close/reopen sessions
+- **Ongoing Operations**: Resumes file reading operations if popup is closed during operation
+- **Auto-Save**: Automatically saves chat input text as you type
+- **Content Recovery**: Restores previously read plans and code content
+- **Session Expiry**: Sessions expire after 1 hour for security
+
 ### 💬 Chat Integration
 - Send messages directly to bolt.new chat
 - Automatic input field detection and interaction
@@ -76,6 +83,15 @@ During file reading, you'll see a progress indicator showing:
 - Current file being read
 - Progress bar with percentage
 - File count (current/total)
+
+### Session Persistence
+
+The extension maintains state across popup sessions:
+- **Auto-Save**: Chat input text is saved as you type
+- **State Recovery**: Previously read plans and code content are restored when reopening
+- **Operation Resumption**: If you close the popup during file reading, the operation continues in the background
+- **Progress Restoration**: When reopened, shows current status and can resume showing progress
+- **Session Timeout**: Stored sessions expire after 1 hour for security
 
 ### Results Format
 
